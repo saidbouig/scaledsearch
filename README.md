@@ -199,6 +199,28 @@ Use `api_call` as an escape hatch for any ES/OpenSearch REST API:
 
 Works with any API: index templates, ingest pipelines, ILM policies, cluster settings, and more.
 
+### Async Reindex with Progress
+
+Reindex operations run asynchronously with real-time progress tracking:
+
+```
+Applying V003 Migrate to products_v2... 45% (4,500,000/10,000,000 docs) done (42m)
+```
+
+No configuration needed — all reindex operations automatically use async mode with polling. If the CLI disconnects, the reindex continues running on the cluster.
+
+## All Operation Types
+
+| Category | Operations |
+|----------|-----------|
+| Index | `create_index`, `delete_index`, `close_index`, `open_index` |
+| Schema | `put_mapping`, `put_settings` |
+| Data | `reindex` (async with progress) |
+| Alias | `add_alias`, `remove_alias`, `swap_alias` |
+| Template | `put_template`, `delete_template` |
+| Pipeline | `put_pipeline`, `delete_pipeline` |
+| Generic | `api_call` (any REST API) |
+
 ## Supported Engines
 
 | Engine | Versions | Status |
@@ -273,11 +295,16 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 ## Roadmap
 
 ### Migrations
-- [x] Core CLI (init, create, status, migrate, diff, validate, rollback)
+- [x] Core CLI (init, create, status, apply, diff, validate, rollback, import)
 - [x] Elasticsearch 7-9 support
 - [x] OpenSearch 2-3 support
 - [x] Migration locking
 - [x] Checksum validation
+- [x] Alias operations (add, remove, swap)
+- [x] Index templates and ingest pipelines
+- [x] Generic API calls (api_call)
+- [x] Async reindex with progress tracking
+- [x] Import existing cluster as baseline
 - [ ] Solr support
 - [ ] CI/CD integration (GitHub Actions)
 - [ ] Multi-cluster environments
