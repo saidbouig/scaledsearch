@@ -51,9 +51,9 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
     return;
   }
 
-  const engine = await createEngine(config);
-
+  let engine;
   try {
+    engine = await createEngine(config);
     await engine.connect();
   } catch (err: any) {
     console.log(chalk.red(`Cannot connect to ${config.connection.host}: ${err.message}`));

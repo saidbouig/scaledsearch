@@ -9,12 +9,14 @@ export class OpenSearchEngine implements SearchEngine {
   private baseUrl: string;
   private headers: Record<string, string>;
 
-  constructor(host: string, auth?: { type: string; username?: string; password?: string }) {
+  constructor(host: string, auth?: { type: string; username?: string; password?: string; apiKey?: string }) {
     this.baseUrl = host.replace(/\/$/, '');
     this.headers = { 'Content-Type': 'application/json' };
     if (auth?.type === 'basic' && auth.username && auth.password) {
       const encoded = Buffer.from(`${auth.username}:${auth.password}`).toString('base64');
       this.headers['Authorization'] = `Basic ${encoded}`;
+    } else if (auth?.type === 'apikey' && auth.apiKey) {
+      this.headers['Authorization'] = `ApiKey ${auth.apiKey}`;
     }
   }
 
