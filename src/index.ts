@@ -6,6 +6,7 @@ import { statusCommand } from './commands/status';
 import { migrateCommand } from './commands/migrate';
 import { diffCommand } from './commands/diff';
 import { rollbackCommand } from './commands/rollback';
+import { validateCommand } from './commands/validate';
 
 const program = new Command();
 
@@ -40,6 +41,11 @@ program
   .command('diff')
   .description('Show pending migration changes in detail')
   .action(diffCommand);
+
+program
+  .command('validate')
+  .description('Validate migration files for errors')
+  .action(validateCommand);
 
 program
   .command('rollback')

@@ -51,6 +51,20 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
     return;
   }
 
+  // Dry-run can work offline
+  if (options.dryRun) {
+    const pending = migrations; // In offline dry-run, show all
+    console.log(chalk.bold(`\n${pending.length} migration(s) to apply:\n`));
+    for (const m of pending) {
+      console.log(`  ${chalk.cyan(`V${String(m.version).padStart(3, '0')}`)} ${m.description}`);
+      for (const op of m.operations) {
+        console.log(`    → ${op.type} ${op.index || ''}`);
+      }
+    }
+    console.log(chalk.yellow('\n(dry-run — no changes applied)'));
+    return;
+  }
+
   const engine = new ElasticsearchEngine(config.connection.host, config.connection.auth);
 
   try {
