@@ -8,9 +8,14 @@ import { validateMigrations } from '../migration/validator';
 
 async function executeOperation(engine: SearchEngine, op: MigrationOperation): Promise<void> {
   switch (op.type) {
-    case 'create_index':
+    case 'create_index': {
+      const exists = await engine.indexExists(op.index);
+      if (exists) {
+        throw new Error(`Index '${op.index}' already exists. Use put_mapping or put_settings to modify, or delete_index first.`);
+      }
       await engine.createIndex(op.index, { settings: op.settings, mappings: op.mappings || op.body });
       break;
+    }
     case 'put_mapping':
       await engine.putMapping(op.index, op.body || op.mappings);
       break;
@@ -27,10 +32,13 @@ async function executeOperation(engine: SearchEngine, op: MigrationOperation): P
       await engine.openIndex(op.index);
       break;
     case 'reindex':
-      await engine.reindex(op.source!, op.dest || op.index, op.script);
+      if (!op.source) {
+        throw new Error(`Reindex operation missing 'source' field.`);
+      }
+      await engine.reindex(op.source, op.dest || op.index, op.script);
       break;
     default:
-      throw new Error(`Unknown operation type: ${op.type}`);
+      throw new Error(`Unknown operation type: '${op.type}'. Valid types: create_index, put_mapping, put_settings, delete_index, reindex, close_index, open_index`);
   }
 }
 
@@ -51,10 +59,24 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
     return;
   }
 
-  // Dry-run can work offline
+  // Dry-run: try to connect for accurate pending list, fallback to showing all
   if (options.dryRun) {
-    const pending = migrations; // In offline dry-run, show all
-    console.log(chalk.bold(`\n${pending.length} migration(s) to apply:\n`));
+    let pending = migrations;
+    try {
+      const engine = await createEngine(config);
+      await engine.connect();
+      const history = new MigrationHistory(engine, config.history.index);
+      const applied = await history.getApplied();
+      const appliedVersions = new Set(applied.map(a => a.version));
+      pending = migrations.filter(m => !appliedVersions.has(m.version));
+    } catch {
+      console.log(chalk.yellow('(offline — showing all migrations)\n'));
+    }
+    if (pending.length === 0) {
+      console.log(chalk.green('All migrations already applied.'));
+      return;
+    }
+    console.log(chalk.bold(`${pending.length} migration(s) would be applied:\n`));
     for (const m of pending) {
       console.log(`  ${chalk.cyan(`V${String(m.version).padStart(3, '0')}`)} ${m.description}`);
       for (const op of m.operations) {
@@ -82,7 +104,7 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
   // Acquire lock
   const locked = await history.acquireLock();
   if (!locked) {
-    console.log(chalk.red('\nAnother migration is in progress. Wait or run ss migrate apply --force to override.'));
+    console.log(chalk.red('\nAnother migration is in progress. Lock expires after 10 minutes if the process crashed.'));
     process.exit(1);
   }
 
@@ -116,23 +138,16 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
 
   console.log(`\n${pending.length} pending migration(s):\n`);
 
-  if (options.dryRun) {
-    for (const m of pending) {
-      console.log(`  ${chalk.cyan(`V${String(m.version).padStart(3, '0')}`)} ${m.description}`);
-      for (const op of m.operations) {
-        console.log(`    → ${op.type} ${op.index || ''}`);
-      }
-    }
-    console.log(chalk.yellow('\n(dry-run — no changes applied)'));
-    return;
-  }
-
   // Execute
   for (const m of pending) {
     const start = Date.now();
     process.stdout.write(`  Applying V${String(m.version).padStart(3, '0')} ${m.description}...`);
 
     try {
+      if (m.operations.length === 0) {
+        console.log(chalk.yellow(` skipped (no operations)`));
+        continue;
+      }
       for (const op of m.operations) {
         await executeOperation(engine, op);
       }
@@ -163,6 +178,10 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
 
       console.log(chalk.red(` FAILED (${elapsed}ms)`));
       console.log(chalk.red(`\n  Error: ${err.message}`));
+      if (m.operations.length > 1) {
+        console.log(chalk.yellow(`\n  Warning: Some operations in V${m.version} may have been partially applied.`));
+        console.log(chalk.yellow(`  Check your cluster state before retrying.`));
+      }
       console.log(chalk.yellow(`\n  Migration stopped at V${m.version}. Fix the issue and run 'ss migrate apply' again.`));
       await history.releaseLock();
       process.exit(1);
