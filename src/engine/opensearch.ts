@@ -20,16 +20,30 @@ export class OpenSearchEngine implements SearchEngine {
 
   private async request(method: string, path: string, body?: any): Promise<any> {
     const url = `${this.baseUrl}${path}`;
-    const opts: RequestInit = { method, headers: this.headers };
-    if (body) opts.body = JSON.stringify(body);
-    const res = await fetch(url, opts);
-    const text = await res.text();
-    if (!res.ok) {
-      let msg = text;
-      try { msg = JSON.parse(text)?.error?.reason || text; } catch {}
-      throw new Error(`OpenSearch ${method} ${path} failed (${res.status}): ${msg}`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    try {
+      const opts: RequestInit = { method, headers: this.headers, signal: controller.signal };
+      if (body) opts.body = JSON.stringify(body);
+      const res = await fetch(url, opts);
+      const text = await res.text();
+      if (!res.ok) {
+        let msg = text;
+        try { msg = JSON.parse(text)?.error?.reason || text; } catch {}
+        if (res.status === 401 || res.status === 403) {
+          throw new Error(`Authentication failed (${res.status}). Check your credentials in .scaledsearch/config.yaml`);
+        }
+        throw new Error(`${method} ${path} failed (${res.status}): ${msg}`);
+      }
+      return text ? JSON.parse(text) : {};
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        throw new Error(`Request timed out after 30s: ${method} ${path}. Check if your cluster is reachable at ${this.baseUrl}`);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeout);
     }
-    return text ? JSON.parse(text) : {};
   }
 
   async connect(): Promise<void> {
@@ -91,6 +105,10 @@ export class OpenSearchEngine implements SearchEngine {
 
   async indexDocument(index: string, id: string, doc: any): Promise<void> {
     await this.request('PUT', `/${index}/_doc/${id}?refresh=true`, doc);
+  }
+
+  async createDocument(index: string, id: string, doc: any): Promise<void> {
+    await this.request('PUT', `/${index}/_doc/${id}?refresh=true&op_type=create`, doc);
   }
 
   async deleteDocument(index: string, id: string): Promise<void> {
