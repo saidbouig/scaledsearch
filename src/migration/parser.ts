@@ -31,13 +31,33 @@ function computeChecksum(content: string): string {
 }
 
 export function parseMigrationFile(filePath: string): MigrationFile {
-  const content = fs.readFileSync(filePath, 'utf-8');
-  const parsed = parse(content);
   const fileName = path.basename(filePath);
+  let content: string;
+  try {
+    content = fs.readFileSync(filePath, 'utf-8');
+  } catch (err: any) {
+    throw new Error(`Cannot read migration file ${fileName}: ${err.message}`);
+  }
 
   const versionMatch = fileName.match(/^V(\d+)__/);
   if (!versionMatch) {
-    throw new Error(`Invalid migration file name: ${fileName}. Expected format: V{NNN}__{description}.yaml`);
+    throw new Error(`Invalid migration file name: ${fileName}. Expected format: V001__description.yaml`);
+  }
+
+  let parsed: any;
+  try {
+    parsed = parse(content);
+  } catch (err: any) {
+    throw new Error(`Invalid YAML in ${fileName}: ${err.message}`);
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error(`Migration file ${fileName} is empty or invalid. It must contain a YAML object with 'operations'.`);
+  }
+
+  const operations = parsed.operations;
+  if (operations && !Array.isArray(operations)) {
+    throw new Error(`'operations' in ${fileName} must be an array.`);
   }
 
   return {
@@ -45,8 +65,8 @@ export function parseMigrationFile(filePath: string): MigrationFile {
     description: parsed.description || fileName.replace(/^V\d+__/, '').replace(/\.yaml$/, '').replace(/-/g, ' '),
     engine: parsed.engine,
     targetVersion: parsed.target_version,
-    operations: parsed.operations || [],
-    rollback: parsed.rollback,
+    operations: operations || [],
+    rollback: Array.isArray(parsed.rollback) ? parsed.rollback : undefined,
     filePath,
     fileName,
     checksum: computeChecksum(content),
