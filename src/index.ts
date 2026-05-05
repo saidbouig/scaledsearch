@@ -64,11 +64,17 @@ migrate
   .description('Import existing cluster state as baseline migration (V000)')
   .action(importCommand);
 
-// -- future toolkit commands (stubs) --
-// ss audit
-// ss bench
-// ss monitor
-// ss tune
-// ss cost
+// Handle unknown commands gracefully
+program.on('command:*', (args) => {
+  console.error(`Unknown command: ${args[0]}\n`);
+  program.outputHelp();
+  process.exit(1);
+});
+
+migrate.on('command:*', (args) => {
+  console.error(`Unknown migrate command: ${args[0]}\n`);
+  migrate.outputHelp();
+  process.exit(1);
+});
 
 program.parse();
