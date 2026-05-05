@@ -283,6 +283,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 - [ ] Multi-cluster environments
 
 ### Toolkit
+- [x] `scaledsearch migrate` — version-controlled schema migrations
 - [ ] `scaledsearch audit` — cluster health check
 - [ ] `scaledsearch bench` — performance benchmarking
 - [ ] `scaledsearch monitor` — continuous monitoring
