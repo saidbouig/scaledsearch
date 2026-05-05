@@ -38,7 +38,7 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
   const cwd = process.cwd();
 
   if (!isInitialized(cwd)) {
-    console.log(chalk.red('Not initialized.') + ` Run ${chalk.cyan('ss init')} first.`);
+    console.log(chalk.red('Not initialized.') + ` Run ${chalk.cyan('ss migrate init')} first.`);
     process.exit(1);
   }
 
@@ -82,7 +82,7 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
   // Acquire lock
   const locked = await history.acquireLock();
   if (!locked) {
-    console.log(chalk.red('\nAnother migration is in progress. Wait or run ss migrate --force to override.'));
+    console.log(chalk.red('\nAnother migration is in progress. Wait or run ss migrate apply --force to override.'));
     process.exit(1);
   }
 
@@ -163,7 +163,7 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
 
       console.log(chalk.red(` FAILED (${elapsed}ms)`));
       console.log(chalk.red(`\n  Error: ${err.message}`));
-      console.log(chalk.yellow(`\n  Migration stopped at V${m.version}. Fix the issue and run 'ss migrate' again.`));
+      console.log(chalk.yellow(`\n  Migration stopped at V${m.version}. Fix the issue and run 'ss migrate apply' again.`));
       await history.releaseLock();
       process.exit(1);
     }

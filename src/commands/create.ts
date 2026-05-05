@@ -26,7 +26,7 @@ export async function createCommand(name: string): Promise<void> {
   const cwd = process.cwd();
 
   if (!isInitialized(cwd)) {
-    console.log(chalk.red('Not initialized.') + ` Run ${chalk.cyan('ss init')} first.`);
+    console.log(chalk.red('Not initialized.') + ` Run ${chalk.cyan('ss migrate init')} first.`);
     process.exit(1);
   }
 
@@ -45,5 +45,5 @@ export async function createCommand(name: string): Promise<void> {
   console.log(chalk.green(`Created migration:`));
   console.log(`  ${filePath}`);
   console.log('');
-  console.log(`Edit the file to define your schema changes, then run ${chalk.cyan('ss migrate')}.`);
+  console.log(`Edit the file to define your schema changes, then run ${chalk.cyan('ss migrate apply')}.`);
 }

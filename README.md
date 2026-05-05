@@ -28,36 +28,36 @@ npm install -g scaledsearch
 
 ```bash
 # 1. Initialize in your project
-ss init
+ss migrate init
 
 # 2. Create a migration
-ss create "add-products-index"
+ss migrate create "add-products-index"
 
 # 3. Edit the generated YAML file
 # migrations/V001__add-products-index.yaml
 
 # 4. Preview changes
-ss migrate --dry-run
+ss migrate apply --dry-run
 
 # 5. Apply
-ss migrate
+ss migrate apply
 
 # 6. Check status
-ss status
+ss migrate status
 ```
 
 ## Migration Commands
 
 | Command | Description |
 |---------|-------------|
-| `ss init` | Initialize ScaledSearch in current directory |
-| `ss create <name>` | Create a new versioned migration file |
-| `ss status` | Show applied vs pending migrations |
-| `ss migrate` | Apply pending migrations to cluster |
-| `ss migrate --dry-run` | Preview without applying (works offline) |
-| `ss diff` | Show detailed pending changes |
-| `ss validate` | Check migration file integrity |
-| `ss rollback` | Undo last migration |
+| `ss migrate init` | Initialize ScaledSearch in current directory |
+| `ss migrate create <name>` | Create a new versioned migration file |
+| `ss migrate status` | Show applied vs pending migrations |
+| `ss migrate apply` | Apply pending migrations to cluster |
+| `ss migrate apply --dry-run` | Preview without applying (works offline) |
+| `ss migrate diff` | Show detailed pending changes |
+| `ss migrate validate` | Check migration file integrity |
+| `ss migrate rollback` | Undo last migration |
 
 ## Migration File Format
 

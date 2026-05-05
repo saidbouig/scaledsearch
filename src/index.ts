@@ -12,45 +12,57 @@ const program = new Command();
 
 program
   .name('ss')
-  .description('ScaledSearch — Flyway for Search Engines. Version-controlled schema migrations for Elasticsearch, OpenSearch, and Solr.')
-  .version('0.1.0');
+  .description('ScaledSearch — The Search Engineer\'s Toolkit for Elasticsearch, OpenSearch, and Solr.')
+  .version('0.2.0');
 
-program
+// -- ss migrate <subcommand> --
+const migrate = program
+  .command('migrate')
+  .description('Version-controlled schema migrations');
+
+migrate
   .command('init')
   .description('Initialize ScaledSearch in the current directory')
   .action(initCommand);
 
-program
+migrate
   .command('create <name>')
   .description('Create a new migration file')
   .action(createCommand);
 
-program
+migrate
   .command('status')
   .description('Show migration status (applied vs pending)')
   .action(statusCommand);
 
-program
-  .command('migrate')
+migrate
+  .command('apply')
   .description('Apply pending migrations to the cluster')
   .option('--dry-run', 'Preview changes without applying')
   .option('--target <version>', 'Migrate up to specific version (e.g. V003)')
   .action(migrateCommand);
 
-program
+migrate
   .command('diff')
   .description('Show pending migration changes in detail')
   .action(diffCommand);
 
-program
+migrate
   .command('validate')
   .description('Validate migration files for errors')
   .action(validateCommand);
 
-program
+migrate
   .command('rollback')
   .description('Rollback the last applied migration')
   .option('--to <version>', 'Rollback to specific version')
   .action(rollbackCommand);
+
+// -- future toolkit commands (stubs) --
+// ss audit
+// ss bench
+// ss monitor
+// ss tune
+// ss cost
 
 program.parse();

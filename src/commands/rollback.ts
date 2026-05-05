@@ -37,7 +37,7 @@ export async function rollbackCommand(options: { to?: string }): Promise<void> {
   const cwd = process.cwd();
 
   if (!isInitialized(cwd)) {
-    console.log(chalk.red('Not initialized.') + ` Run ${chalk.cyan('ss init')} first.`);
+    console.log(chalk.red('Not initialized.') + ` Run ${chalk.cyan('ss migrate init')} first.`);
     process.exit(1);
   }
 

@@ -16,5 +16,5 @@ export async function initCommand(): Promise<void> {
   console.log(`  Config:     ${configPath}`);
   console.log(`  Migrations: ${migrationsDir}`);
   console.log('');
-  console.log(`Next: ${chalk.cyan('ss create "initial-schema"')} to create your first migration.`);
+  console.log(`Next: ${chalk.cyan('ss migrate create "initial-schema"')} to create your first migration.`);
 }
