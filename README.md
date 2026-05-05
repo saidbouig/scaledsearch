@@ -1,7 +1,7 @@
 # ScaledSearch
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![npm version](https://img.shields.io/npm/v/@scaledsearch/cli.svg)](https://www.npmjs.com/package/@scaledsearch/cli)
+[![npm version](https://img.shields.io/npm/v/scaledsearch.svg)](https://www.npmjs.com/package/scaledsearch)
 
 **Flyway for Search Engines** — Version-controlled schema migrations for Elasticsearch, OpenSearch, and Solr.
 
@@ -17,7 +17,7 @@ Every database has Flyway or Liquibase. Search engines have had... nothing. Unti
 ## The Solution
 
 ```bash
-npm install -g @scaledsearch/cli
+npm install -g scaledsearch
 
 ss init                          # Initialize project
 ss create "add-products-index"   # Create versioned migration
@@ -31,7 +31,7 @@ ss validate                      # Check integrity
 
 ```bash
 # 1. Install
-npm install -g @scaledsearch/cli
+npm install -g scaledsearch
 
 # 2. Initialize in your project
 ss init
@@ -83,7 +83,7 @@ operations:
 | `ss migrate --dry-run` | Preview without applying (works offline) |
 | `ss diff` | Show detailed pending changes |
 | `ss validate` | Check migration file integrity |
-| `ss rollback` | Undo last migration *(Pro)* |
+| `ss rollback` | Undo last migration |
 
 ## Supported Engines
 
@@ -131,7 +131,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 - [x] Core CLI (init, create, status, migrate, diff, validate)
 - [x] Elasticsearch 7-9 support
 - [x] OpenSearch 2-3 support
-- [ ] Rollback support
+- [x] Rollback support
 - [ ] Solr support
 - [ ] CI/CD integration (GitHub Actions)
 - [ ] Multi-cluster environments

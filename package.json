@@ -1,6 +1,6 @@
 {
   "name": "scaledsearch",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Flyway for Search Engines — version-controlled schema migrations for Elasticsearch, OpenSearch, and Solr",
   "main": "dist/index.js",
   "bin": {
