@@ -53,6 +53,7 @@ export async function rollbackCommand(options: { to?: string }): Promise<void> {
   }
 
   if (toRollback.length === 0) {
+    await history.releaseLock();
     console.log(chalk.yellow('Nothing to rollback.'));
     return;
   }

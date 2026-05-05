@@ -109,6 +109,15 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
 
     try {
       if (m.operations.length === 0) {
+        await history.recordSuccess({
+          version: m.version,
+          description: m.description,
+          checksum: m.checksum,
+          applied_at: new Date().toISOString(),
+          execution_time_ms: 0,
+          engine: clusterInfo.engine,
+          engine_version: clusterInfo.version,
+        });
         console.log(chalk.yellow(` skipped (no operations)`));
         continue;
       }
