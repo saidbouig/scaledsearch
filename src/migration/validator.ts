@@ -39,19 +39,23 @@ export function validateMigrations(files: MigrationFile[], applied: HistoryEntry
   }
 
   // Check for operations validity
-  const validTypes = ['create_index', 'put_mapping', 'put_settings', 'delete_index', 'reindex', 'close_index', 'open_index'];
+  const validTypes = ['create_index', 'put_mapping', 'put_settings', 'delete_index', 'reindex', 'close_index', 'open_index', 'api_call'];
   for (const file of files) {
     for (let i = 0; i < file.operations.length; i++) {
       const op = file.operations[i];
       if (!validTypes.includes(op.type)) {
         errors.push(`V${file.version} op[${i}]: Unknown operation type '${op.type}'. Valid: ${validTypes.join(', ')}`);
       }
-      if (!op.index && op.type !== 'reindex') {
+      if (!op.index && op.type !== 'reindex' && op.type !== 'api_call') {
         errors.push(`V${file.version} op[${i}]: Operation '${op.type}' missing 'index' field`);
       }
       if (op.type === 'reindex') {
         if (!op.source) errors.push(`V${file.version} op[${i}]: Reindex missing 'source' field`);
         if (!op.dest && !op.index) errors.push(`V${file.version} op[${i}]: Reindex missing 'dest' field`);
+      }
+      if (op.type === 'api_call') {
+        if (!op.method) errors.push(`V${file.version} op[${i}]: api_call missing 'method' field`);
+        if (!op.path) errors.push(`V${file.version} op[${i}]: api_call missing 'path' field`);
       }
     }
   }

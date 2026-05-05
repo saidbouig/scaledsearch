@@ -3,7 +3,7 @@ import * as path from 'path';
 import { parse } from 'yaml';
 
 export interface MigrationOperation {
-  type: 'create_index' | 'put_mapping' | 'put_settings' | 'delete_index' | 'reindex' | 'close_index' | 'open_index';
+  type: 'create_index' | 'put_mapping' | 'put_settings' | 'delete_index' | 'reindex' | 'close_index' | 'open_index' | 'api_call';
   index: string;
   settings?: any;
   mappings?: any;
@@ -11,6 +11,8 @@ export interface MigrationOperation {
   source?: string;
   dest?: string;
   script?: string;
+  method?: string;
+  path?: string;
 }
 
 export interface MigrationFile {

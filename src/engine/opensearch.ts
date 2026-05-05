@@ -132,4 +132,8 @@ export class OpenSearchEngine implements SearchEngine {
   async openIndex(index: string): Promise<void> {
     await this.request('POST', `/${index}/_open`);
   }
+
+  async apiCall(method: string, path: string, body?: any): Promise<any> {
+    return await this.request(method.toUpperCase(), path, body);
+  }
 }
