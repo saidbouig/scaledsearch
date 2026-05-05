@@ -170,6 +170,20 @@ export class OpenSearchEngine implements SearchEngine {
     await this.request('DELETE', `/_ingest/pipeline/${name}`);
   }
 
+  async listIndices(): Promise<string[]> {
+    const result = await this.request('GET', '/_cat/indices?format=json');
+    return (result as any[])
+      .map((i: any) => i.index as string)
+      .filter((name: string) => !name.startsWith('.'));
+  }
+
+  async getAliases(index: string): Promise<string[]> {
+    const result = await this.request('GET', `/${index}/_alias`);
+    const entry = result[index];
+    if (!entry || !entry.aliases) return [];
+    return Object.getOwnPropertyNames(entry.aliases);
+  }
+
   async apiCall(method: string, path: string, body?: any): Promise<any> {
     return await this.request(method.toUpperCase(), path, body);
   }
