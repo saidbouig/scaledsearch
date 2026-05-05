@@ -47,11 +47,12 @@ export class OpenSearchEngine implements SearchEngine {
 
   async getClusterInfo(): Promise<ClusterInfo> {
     const info = await this.request('GET', '/');
+    const isOpenSearch = info.version.distribution === 'opensearch';
     return {
       name: info.cluster_name,
       version: info.version.number,
-      engine: 'opensearch',
-      distribution: info.version.distribution || 'opensearch',
+      engine: isOpenSearch ? 'opensearch' : 'elasticsearch',
+      distribution: info.version.distribution,
     };
   }
 
