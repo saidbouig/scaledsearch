@@ -223,10 +223,37 @@ Tested against: ES 7.17, ES 8.17, ES 9.0, OpenSearch 2.19, OpenSearch 3.0
 engine: elasticsearch
 connection:
   host: http://localhost:9200
+  # auth:
+  #   type: basic
+  #   username: elastic
+  #   password: changeme
 migrations:
   location: ./migrations
 history:
   index: .scaledsearch_history
+```
+
+### Authentication
+
+```yaml
+# Basic auth
+connection:
+  host: https://my-cluster:9200
+  auth:
+    type: basic
+    username: elastic
+    password: changeme
+
+# API key
+connection:
+  host: https://my-cluster:9200
+  auth:
+    type: apikey
+    apiKey: your-base64-api-key
+
+# No auth (default)
+connection:
+  host: http://localhost:9200
 ```
 
 ## Contributing

@@ -16,9 +16,9 @@ export async function rollbackCommand(options: { to?: string }): Promise<void> {
   const config = loadConfig(cwd);
   const migrationsDir = getMigrationsDir(cwd);
   const migrations = loadMigrations(migrationsDir);
-  const engine = await createEngine(config);
-
+  let engine;
   try {
+    engine = await createEngine(config);
     await engine.connect();
   } catch (err: any) {
     console.log(chalk.red(`Cannot connect to ${config.connection.host}: ${err.message}`));

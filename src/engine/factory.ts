@@ -8,11 +8,25 @@ interface DetectedEngine {
   majorVersion: number;
 }
 
-async function detectEngine(host: string): Promise<DetectedEngine> {
+function buildAuthHeaders(auth?: { type: string; username?: string; password?: string; apiKey?: string }): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (auth?.type === 'basic' && auth.username && auth.password) {
+    headers['Authorization'] = `Basic ${Buffer.from(`${auth.username}:${auth.password}`).toString('base64')}`;
+  } else if (auth?.type === 'apikey' && auth.apiKey) {
+    headers['Authorization'] = `ApiKey ${auth.apiKey}`;
+  }
+  return headers;
+}
+
+async function detectEngine(host: string, auth?: any): Promise<DetectedEngine> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
   try {
-    const res = await fetch(host, { signal: controller.signal });
+    const headers = buildAuthHeaders(auth);
+    const res = await fetch(host, { signal: controller.signal, headers });
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(`Authentication failed (${res.status}). Check your auth settings in .scaledsearch/config.yaml`);
+    }
     const info = await res.json();
     const version = parseInt(info.version?.number?.split('.')[0] || '9', 10);
     if (info.version?.distribution === 'opensearch') {
@@ -23,7 +37,11 @@ async function detectEngine(host: string): Promise<DetectedEngine> {
     if (err.name === 'AbortError') {
       throw new Error(`Cannot reach cluster at ${host} (timed out after 10s). Is it running?`);
     }
-    throw new Error(`Cannot connect to ${host}: ${err.message}`);
+    if (err.message?.includes('Authentication failed')) {
+      throw err;
+    }
+    const reason = err.cause?.code || err.code || 'connection failed';
+    throw new Error(`${reason}`);
   } finally {
     clearTimeout(timeout);
   }
@@ -37,7 +55,7 @@ export async function createEngine(config: ScaledSearchConfig): Promise<SearchEn
     return new OpenSearchEngine(host, auth);
   }
 
-  const detected = await detectEngine(host);
+  const detected = await detectEngine(host, auth);
 
   // OpenSearch → HTTP adapter
   if (detected.type === 'opensearch') {
