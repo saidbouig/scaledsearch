@@ -135,6 +135,12 @@ operations:
     alias: products
     from: products_v1
     to: products_v2
+# Safe rollback: just swap back, keep both indices
+rollback:
+  - type: swap_alias
+    alias: products
+    from: products_v2
+    to: products_v1
 ```
 
 ### Alias Operations
