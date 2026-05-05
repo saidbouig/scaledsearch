@@ -57,9 +57,17 @@ export async function rollbackCommand(options: { to?: string }): Promise<void> {
   console.log(chalk.bold(`Connected: ${clusterInfo.engine} ${clusterInfo.version} (${clusterInfo.name})`));
 
   const history = new MigrationHistory(engine, config.history.index);
+
+  const locked = await history.acquireLock();
+  if (!locked) {
+    console.log(chalk.red('\nAnother migration is in progress. Lock expires after 10 minutes if the process crashed.'));
+    process.exit(1);
+  }
+
   const applied = await history.getApplied();
 
   if (applied.length === 0) {
+    await history.releaseLock();
     console.log(chalk.yellow('No migrations to rollback.'));
     return;
   }
@@ -87,6 +95,7 @@ export async function rollbackCommand(options: { to?: string }): Promise<void> {
   }
 
   if (missing.length > 0) {
+    await history.releaseLock();
     console.log(chalk.red(`Cannot rollback — no rollback section in: ${missing.map(v => `V${String(v).padStart(3, '0')}`).join(', ')}`));
     console.log(chalk.yellow('\nAdd a rollback section to the migration file:'));
     console.log(chalk.gray(`  rollback:\n    - type: delete_index\n      index: your_index`));
@@ -111,9 +120,11 @@ export async function rollbackCommand(options: { to?: string }): Promise<void> {
     } catch (err: any) {
       console.log(chalk.red(` FAILED`));
       console.log(chalk.red(`\n  Error: ${err.message}`));
+      await history.releaseLock();
       process.exit(1);
     }
   }
 
+  await history.releaseLock();
   console.log(chalk.green(`\n✓ ${toRollback.length} migration(s) rolled back.`));
 }
