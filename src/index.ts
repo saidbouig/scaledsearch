@@ -14,7 +14,7 @@ const program = new Command();
 program
   .name('scaledsearch')
   .description('ScaledSearch — The Search Engineer\'s Toolkit for Elasticsearch and OpenSearch.\n  Shorthand: ss')
-  .version('1.0.0');
+  .version('1.0.1');
 
 // -- ss migrate <subcommand> --
 const migrate = program

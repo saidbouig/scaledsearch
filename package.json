@@ -1,6 +1,6 @@
 {
   "name": "scaledsearch",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "The Search Engineer's Toolkit — migrate, audit, benchmark, monitor, and optimize Elasticsearch and OpenSearch",
   "main": "dist/index.js",
   "bin": {
