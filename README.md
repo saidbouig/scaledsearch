@@ -13,37 +13,44 @@ Migrate, audit, benchmark, monitor, tune, and optimize your search infrastructur
 npm install -g scaledsearch
 ```
 
+You can also use `ss` as a shorthand:
+
+```bash
+scaledsearch migrate apply    # full name
+ss migrate apply              # shorthand
+```
+
 ## The Toolkit
 
 | Tool | Description | Status |
 |------|-------------|--------|
-| `ss migrate` | Version-controlled schema migrations | ✅ Available |
-| `ss audit` | Cluster health, security, and performance scan | Coming soon |
-| `ss bench` | Query latency and throughput benchmarking | Coming soon |
-| `ss monitor` | Continuous search quality monitoring | Coming soon |
-| `ss tune` | Relevance tuning and optimization | Coming soon |
-| `ss cost` | Cost analysis and optimization | Coming soon |
+| `scaledsearch migrate` | Version-controlled schema migrations | ✅ Available |
+| `scaledsearch audit` | Cluster health, security, and performance scan | Coming soon |
+| `scaledsearch bench` | Query latency and throughput benchmarking | Coming soon |
+| `scaledsearch monitor` | Continuous search quality monitoring | Coming soon |
+| `scaledsearch tune` | Relevance tuning and optimization | Coming soon |
+| `scaledsearch cost` | Cost analysis and optimization | Coming soon |
 
 ## Quick Start — New Project
 
 ```bash
 # 1. Initialize in your project
-ss migrate init
+scaledsearch migrate init
 
 # 2. Create a migration
-ss migrate create "add-products-index"
+scaledsearch migrate create "add-products-index"
 
 # 3. Edit the generated YAML file
 # migrations/V001__add-products-index.yaml
 
 # 4. Preview changes
-ss migrate apply --dry-run
+scaledsearch migrate apply --dry-run
 
 # 5. Apply
-ss migrate apply
+scaledsearch migrate apply
 
 # 6. Check status
-ss migrate status
+scaledsearch migrate status
 ```
 
 ## Quick Start — Existing Cluster
@@ -52,31 +59,31 @@ Already have indices in production? Import them as a baseline:
 
 ```bash
 # 1. Initialize
-ss migrate init
+scaledsearch migrate init
 
 # 2. Import current cluster state as V000
-ss migrate import
+scaledsearch migrate import
 
 # 3. Start versioning from here
-ss migrate create "add-vector-field"
-ss migrate apply
+scaledsearch migrate create "add-vector-field"
+scaledsearch migrate apply
 ```
 
-`ss migrate import` snapshots all indices, mappings, settings, and aliases into `V000__baseline.yaml` and marks it as already applied.
+`scaledsearch migrate import` snapshots all indices, mappings, settings, and aliases into `V000__baseline.yaml` and marks it as already applied.
 
 ## Migration Commands
 
 | Command | Description |
 |---------|-------------|
-| `ss migrate init` | Initialize ScaledSearch in current directory |
-| `ss migrate create <name>` | Create a new versioned migration file |
-| `ss migrate status` | Show applied vs pending migrations |
-| `ss migrate apply` | Apply pending migrations to cluster |
-| `ss migrate apply --dry-run` | Preview without applying (works offline) |
-| `ss migrate diff` | Show detailed pending changes |
-| `ss migrate validate` | Check migration file integrity |
-| `ss migrate rollback` | Undo last migration |
-| `ss migrate import` | Import existing cluster as V000 baseline |
+| `scaledsearch migrate init` | Initialize ScaledSearch in current directory |
+| `scaledsearch migrate create <name>` | Create a new versioned migration file |
+| `scaledsearch migrate status` | Show applied vs pending migrations |
+| `scaledsearch migrate apply` | Apply pending migrations to cluster |
+| `scaledsearch migrate apply --dry-run` | Preview without applying (works offline) |
+| `scaledsearch migrate diff` | Show detailed pending changes |
+| `scaledsearch migrate validate` | Check migration file integrity |
+| `scaledsearch migrate rollback` | Undo last migration |
+| `scaledsearch migrate import` | Import existing cluster as V000 baseline |
 
 ## Migration File Format
 
@@ -243,8 +250,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 - [ ] Multi-cluster environments
 
 ### Toolkit
-- [ ] `ss audit` — cluster health check
-- [ ] `ss bench` — performance benchmarking
-- [ ] `ss monitor` — continuous monitoring
-- [ ] `ss tune` — relevance tuning
-- [ ] `ss cost` — cost optimization
+- [ ] `scaledsearch audit` — cluster health check
+- [ ] `scaledsearch bench` — performance benchmarking
+- [ ] `scaledsearch monitor` — continuous monitoring
+- [ ] `scaledsearch tune` — relevance tuning
+- [ ] `scaledsearch cost` — cost optimization
