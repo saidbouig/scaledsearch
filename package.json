@@ -9,25 +9,31 @@
   },
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsup src/index.ts --format cjs --dts --clean",
+    "build": "tsup",
     "start": "node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": ["elasticsearch", "opensearch", "solr", "migration", "schema", "flyway", "search"],
   "author": "Said Bouigherdaine <saidbouigherdaine@gmail.com>",
   "license": "MIT",
+  "files": ["dist", "README.md", "LICENSE"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/saidbouig/scaledsearch.git"
+  },
+  "homepage": "https://scaledsearch.com",
   "type": "commonjs",
   "dependencies": {
     "@elastic/elasticsearch": "^9.3.4",
-    "chalk": "^5.6.2",
     "commander": "^14.0.3",
-    "typescript": "^6.0.3",
     "yaml": "^2.8.4"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
+    "chalk": "^5.6.2",
     "tsup": "^8.5.1",
-    "tsx": "^4.21.0"
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
   },
   "engines": {
     "node": ">=18"
