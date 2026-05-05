@@ -30,5 +30,7 @@ export interface SearchEngine {
   deleteTemplate(name: string): Promise<void>;
   putPipeline(name: string, body: any): Promise<void>;
   deletePipeline(name: string): Promise<void>;
+  listIndices(): Promise<string[]>;
+  getAliases(index: string): Promise<string[]>;
   apiCall(method: string, path: string, body?: any): Promise<any>;
 }

@@ -7,6 +7,7 @@ import { migrateCommand } from './commands/migrate';
 import { diffCommand } from './commands/diff';
 import { rollbackCommand } from './commands/rollback';
 import { validateCommand } from './commands/validate';
+import { importCommand } from './commands/import';
 
 const program = new Command();
 
@@ -57,6 +58,11 @@ migrate
   .description('Rollback the last applied migration')
   .option('--to <version>', 'Rollback to specific version')
   .action(rollbackCommand);
+
+migrate
+  .command('import')
+  .description('Import existing cluster state as baseline migration (V000)')
+  .action(importCommand);
 
 // -- future toolkit commands (stubs) --
 // ss audit

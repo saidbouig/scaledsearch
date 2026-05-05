@@ -133,6 +133,20 @@ export class ElasticsearchEngine implements SearchEngine {
     await this.client.ingest.deletePipeline({ id: name });
   }
 
+  async listIndices(): Promise<string[]> {
+    const result = await this.client.cat.indices({ format: 'json' });
+    return (result as any[])
+      .map((i: any) => i.index as string)
+      .filter((name: string) => !name.startsWith('.'));
+  }
+
+  async getAliases(index: string): Promise<string[]> {
+    const result = await this.client.indices.getAlias({ index });
+    const entry = (result as any)[index];
+    if (!entry || !entry.aliases) return [];
+    return Object.getOwnPropertyNames(entry.aliases);
+  }
+
   async apiCall(method: string, path: string, body?: any): Promise<any> {
     const opts: any = { method, path };
     if (body) opts.body = body;
