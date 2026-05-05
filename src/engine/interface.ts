@@ -17,6 +17,7 @@ export interface SearchEngine {
   getMapping(index: string): Promise<any>;
   getSettings(index: string): Promise<any>;
   indexDocument(index: string, id: string, doc: any): Promise<void>;
+  createDocument(index: string, id: string, doc: any): Promise<void>;
   deleteDocument(index: string, id: string): Promise<void>;
   search(index: string, query: any): Promise<any>;
   reindex(source: string, dest: string, script?: string): Promise<void>;

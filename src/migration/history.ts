@@ -79,29 +79,36 @@ export class MigrationHistory {
 
   async acquireLock(): Promise<boolean> {
     await this.ensureIndex();
+    // Use create-with-id + op_type=create for atomicity — fails if doc already exists
     try {
-      // Check if lock exists and is recent (< 10 min)
-      const exists = await this.engine.indexExists(this.indexName);
-      if (exists) {
-        const result = await this.engine.search(this.indexName, {
-          query: { term: { _id: '_lock' } },
-        });
-        if (result.hits.hits.length > 0) {
-          const lock = result.hits.hits[0]._source;
-          const lockAge = Date.now() - new Date(lock.locked_at).getTime();
-          if (lockAge < 10 * 60 * 1000) {
-            return false; // Lock is active
-          }
-          // Stale lock — override it
-        }
-      }
-      await this.engine.indexDocument(this.indexName, '_lock', {
+      await this.engine.createDocument(this.indexName, '_lock', {
         locked_at: new Date().toISOString(),
         pid: process.pid,
       });
       return true;
-    } catch {
-      return true; // If lock mechanism fails, proceed anyway
+    } catch (err: any) {
+      // Document already exists — check if stale (> 10 min)
+      try {
+        const result = await this.engine.search(this.indexName, {
+          query: { ids: { values: ['_lock'] } },
+        });
+        if (result.hits.hits.length > 0) {
+          const lock = result.hits.hits[0]._source;
+          const lockAge = Date.now() - new Date(lock.locked_at).getTime();
+          if (lockAge > 10 * 60 * 1000) {
+            // Stale lock — delete and retry
+            await this.engine.deleteDocument(this.indexName, '_lock');
+            await this.engine.createDocument(this.indexName, '_lock', {
+              locked_at: new Date().toISOString(),
+              pid: process.pid,
+            });
+            return true;
+          }
+        }
+        return false; // Active lock held by another process
+      } catch {
+        return false; // Can't determine lock state — refuse to proceed
+      }
     }
   }
 
@@ -109,7 +116,7 @@ export class MigrationHistory {
     try {
       await this.engine.deleteDocument(this.indexName, '_lock');
     } catch {
-      // Ignore — lock cleanup is best-effort
+      // Best-effort cleanup
     }
   }
 }

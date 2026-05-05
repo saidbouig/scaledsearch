@@ -72,6 +72,10 @@ export class ElasticsearchEngine implements SearchEngine {
     await this.client.index({ index, id, document: doc, refresh: 'true' });
   }
 
+  async createDocument(index: string, id: string, doc: any): Promise<void> {
+    await this.client.index({ index, id, document: doc, refresh: 'true', op_type: 'create' });
+  }
+
   async deleteDocument(index: string, id: string): Promise<void> {
     await this.client.delete({ index, id, refresh: 'true' });
   }
