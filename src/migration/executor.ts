@@ -1,3 +1,4 @@
+import chalk from 'chalk';
 import { SearchEngine } from '../engine/interface';
 import { MigrationOperation } from './parser';
 
@@ -9,6 +10,46 @@ const VALID_TYPES = [
   'put_pipeline', 'delete_pipeline',
   'api_call',
 ];
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function formatProgress(created: number, total: number): string {
+  if (total === 0) return '0%';
+  const pct = Math.round((created / total) * 100);
+  return `${pct}% (${created.toLocaleString()}/${total.toLocaleString()} docs)`;
+}
+
+async function executeReindex(engine: SearchEngine, source: string, dest: string, script?: string): Promise<void> {
+  // Start async reindex
+  const taskId = await engine.reindexAsync(source, dest, script);
+
+  // Poll for completion
+  let lastLog = 0;
+  while (true) {
+    await sleep(3000);
+    const task = await engine.getTask(taskId);
+
+    if (task.error) {
+      throw new Error(`Reindex failed: ${JSON.stringify(task.error)}`);
+    }
+
+    if (task.completed) {
+      if (task.total && task.total > 0) {
+        process.stdout.write(` ${formatProgress(task.created || task.total, task.total)}`);
+      }
+      return;
+    }
+
+    // Log progress every 10 seconds
+    const now = Date.now();
+    if (task.total && task.total > 0 && now - lastLog > 10000) {
+      process.stdout.write(` ${formatProgress(task.created || 0, task.total)}`);
+      lastLog = now;
+    }
+  }
+}
 
 export async function executeOperation(engine: SearchEngine, op: MigrationOperation): Promise<void> {
   switch (op.type) {
@@ -39,7 +80,7 @@ export async function executeOperation(engine: SearchEngine, op: MigrationOperat
       if (!op.source) {
         throw new Error(`Reindex operation missing 'source' field.`);
       }
-      await engine.reindex(op.source, op.dest || op.index, op.script);
+      await executeReindex(engine, op.source, op.dest || op.index, op.script);
       break;
     case 'add_alias':
       if (!op.alias) throw new Error(`add_alias requires 'alias' field.`);

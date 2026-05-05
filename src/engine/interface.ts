@@ -21,6 +21,8 @@ export interface SearchEngine {
   deleteDocument(index: string, id: string): Promise<void>;
   search(index: string, query: any): Promise<any>;
   reindex(source: string, dest: string, script?: string): Promise<void>;
+  reindexAsync(source: string, dest: string, script?: string): Promise<string>;
+  getTask(taskId: string): Promise<{ completed: boolean; total?: number; created?: number; error?: any }>;
   closeIndex(index: string): Promise<void>;
   openIndex(index: string): Promise<void>;
   addAlias(index: string, alias: string): Promise<void>;

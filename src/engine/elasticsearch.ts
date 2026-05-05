@@ -92,6 +92,26 @@ export class ElasticsearchEngine implements SearchEngine {
     await this.client.reindex(body);
   }
 
+  async reindexAsync(source: string, dest: string, script?: string): Promise<string> {
+    const body: any = { source: { index: source }, dest: { index: dest } };
+    if (script) {
+      body.script = { source: script };
+    }
+    const result = await this.client.reindex({ ...body, wait_for_completion: false } as any);
+    return (result as any).task;
+  }
+
+  async getTask(taskId: string): Promise<{ completed: boolean; total?: number; created?: number; error?: any }> {
+    const result: any = await this.client.tasks.get({ task_id: taskId });
+    const status = result.task?.status;
+    return {
+      completed: result.completed,
+      total: status?.total,
+      created: status?.created,
+      error: result.error,
+    };
+  }
+
   async closeIndex(index: string): Promise<void> {
     await this.client.indices.close({ index });
   }
