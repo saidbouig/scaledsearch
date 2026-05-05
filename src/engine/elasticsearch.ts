@@ -99,4 +99,10 @@ export class ElasticsearchEngine implements SearchEngine {
   async openIndex(index: string): Promise<void> {
     await this.client.indices.open({ index });
   }
+
+  async apiCall(method: string, path: string, body?: any): Promise<any> {
+    const opts: any = { method, path };
+    if (body) opts.body = body;
+    return await this.client.transport.request(opts);
+  }
 }

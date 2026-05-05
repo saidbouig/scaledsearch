@@ -1,37 +1,9 @@
 import chalk from 'chalk';
 import { isInitialized, loadConfig, getMigrationsDir } from '../config/config';
-import { loadMigrations, MigrationOperation } from '../migration/parser';
+import { loadMigrations } from '../migration/parser';
 import { MigrationHistory } from '../migration/history';
 import { createEngine } from '../engine/factory';
-import { SearchEngine } from '../engine/interface';
-
-async function executeOperation(engine: SearchEngine, op: MigrationOperation): Promise<void> {
-  switch (op.type) {
-    case 'create_index':
-      await engine.createIndex(op.index, { settings: op.settings, mappings: op.mappings || op.body });
-      break;
-    case 'put_mapping':
-      await engine.putMapping(op.index, op.body || op.mappings);
-      break;
-    case 'put_settings':
-      await engine.putSettings(op.index, op.settings || op.body);
-      break;
-    case 'delete_index':
-      await engine.deleteIndex(op.index);
-      break;
-    case 'close_index':
-      await engine.closeIndex(op.index);
-      break;
-    case 'open_index':
-      await engine.openIndex(op.index);
-      break;
-    case 'reindex':
-      await engine.reindex(op.source!, op.dest || op.index, op.script);
-      break;
-    default:
-      throw new Error(`Unknown operation type: ${op.type}`);
-  }
-}
+import { executeOperation } from '../migration/executor';
 
 export async function rollbackCommand(options: { to?: string }): Promise<void> {
   const cwd = process.cwd();

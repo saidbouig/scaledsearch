@@ -23,4 +23,5 @@ export interface SearchEngine {
   reindex(source: string, dest: string, script?: string): Promise<void>;
   closeIndex(index: string): Promise<void>;
   openIndex(index: string): Promise<void>;
+  apiCall(method: string, path: string, body?: any): Promise<any>;
 }

@@ -88,6 +88,36 @@ rollback:
     index: products
 ```
 
+### Generic API Calls
+
+Use `api_call` for any ES/OpenSearch API — aliases, templates, pipelines, ILM policies:
+
+```yaml
+description: "Zero-downtime migration with alias swap"
+operations:
+  - type: create_index
+    index: products_v2
+    mappings:
+      properties:
+        title:
+          type: text
+        embedding:
+          type: dense_vector
+          dims: 768
+  - type: reindex
+    source: products_v1
+    dest: products_v2
+  - type: api_call
+    method: POST
+    path: /_aliases
+    body:
+      actions:
+        - remove: { index: products_v1, alias: products }
+        - add: { index: products_v2, alias: products }
+```
+
+Works with any API: index templates, ingest pipelines, ILM policies, cluster settings, and more.
+
 ## Supported Engines
 
 | Engine | Versions | Status |

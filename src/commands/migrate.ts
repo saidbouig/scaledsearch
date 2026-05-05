@@ -3,44 +3,8 @@ import { isInitialized, loadConfig, getMigrationsDir } from '../config/config';
 import { loadMigrations, MigrationFile, MigrationOperation } from '../migration/parser';
 import { MigrationHistory } from '../migration/history';
 import { createEngine } from '../engine/factory';
-import { SearchEngine } from '../engine/interface';
 import { validateMigrations } from '../migration/validator';
-
-async function executeOperation(engine: SearchEngine, op: MigrationOperation): Promise<void> {
-  switch (op.type) {
-    case 'create_index': {
-      const exists = await engine.indexExists(op.index);
-      if (exists) {
-        throw new Error(`Index '${op.index}' already exists. Use put_mapping or put_settings to modify, or delete_index first.`);
-      }
-      await engine.createIndex(op.index, { settings: op.settings, mappings: op.mappings || op.body });
-      break;
-    }
-    case 'put_mapping':
-      await engine.putMapping(op.index, op.body || op.mappings);
-      break;
-    case 'put_settings':
-      await engine.putSettings(op.index, op.settings || op.body);
-      break;
-    case 'delete_index':
-      await engine.deleteIndex(op.index);
-      break;
-    case 'close_index':
-      await engine.closeIndex(op.index);
-      break;
-    case 'open_index':
-      await engine.openIndex(op.index);
-      break;
-    case 'reindex':
-      if (!op.source) {
-        throw new Error(`Reindex operation missing 'source' field.`);
-      }
-      await engine.reindex(op.source, op.dest || op.index, op.script);
-      break;
-    default:
-      throw new Error(`Unknown operation type: '${op.type}'. Valid types: create_index, put_mapping, put_settings, delete_index, reindex, close_index, open_index`);
-  }
-}
+import { executeOperation } from '../migration/executor';
 
 export async function migrateCommand(options: { dryRun?: boolean; target?: string }): Promise<void> {
   const cwd = process.cwd();

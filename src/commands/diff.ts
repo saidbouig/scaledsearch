@@ -44,9 +44,13 @@ export async function diffCommand(): Promise<void> {
   for (const m of pending) {
     console.log(`  ${chalk.cyan(`V${String(m.version).padStart(3, '0')}__${m.fileName.replace(/^V\d+__/, '')}`)}`);
     for (const op of m.operations) {
-      const action = op.type.replace('_', ' ').toUpperCase();
-      const target = op.index || `${op.source} → ${op.dest}`;
-      console.log(`    → ${chalk.yellow(action)} ${target}`);
+      if (op.type === 'api_call') {
+        console.log(`    → ${chalk.yellow(op.method?.toUpperCase() || 'API')} ${op.path}`);
+      } else {
+        const action = op.type.replace('_', ' ').toUpperCase();
+        const target = op.index || `${op.source} → ${op.dest}`;
+        console.log(`    → ${chalk.yellow(action)} ${target}`);
+      }
 
       if (op.body?.properties || op.mappings?.properties) {
         const props = op.body?.properties || op.mappings?.properties;
