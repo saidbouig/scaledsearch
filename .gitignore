@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.scaledsearch/
+migrations/
+*.js
+*.d.ts
+*.js.map
+!src/**

@@ -1,0 +1,35 @@
+{
+  "name": "@scaledsearch/cli",
+  "version": "0.1.0",
+  "description": "Flyway for Search Engines — version-controlled schema migrations for Elasticsearch, OpenSearch, and Solr",
+  "main": "dist/index.js",
+  "bin": {
+    "ss": "dist/index.js",
+    "scaledsearch": "dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsup src/index.ts --format cjs --dts --clean",
+    "start": "node dist/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["elasticsearch", "opensearch", "solr", "migration", "schema", "flyway", "search"],
+  "author": "Said Bouigherdaine <saidbouigherdaine@gmail.com>",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "@elastic/elasticsearch": "^9.3.4",
+    "chalk": "^5.6.2",
+    "commander": "^14.0.3",
+    "typescript": "^6.0.3",
+    "yaml": "^2.8.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

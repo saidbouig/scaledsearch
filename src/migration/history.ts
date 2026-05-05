@@ -1,0 +1,73 @@
+import { SearchEngine } from '../engine/interface';
+
+export interface HistoryEntry {
+  version: number;
+  description: string;
+  checksum: string;
+  applied_at: string;
+  execution_time_ms: number;
+  status: 'success' | 'failed';
+  engine: string;
+  engine_version: string;
+}
+
+const HISTORY_MAPPING = {
+  mappings: {
+    properties: {
+      version: { type: 'integer' as const },
+      description: { type: 'keyword' as const },
+      checksum: { type: 'keyword' as const },
+      applied_at: { type: 'date' as const },
+      execution_time_ms: { type: 'long' as const },
+      status: { type: 'keyword' as const },
+      engine: { type: 'keyword' as const },
+      engine_version: { type: 'keyword' as const },
+    },
+  },
+};
+
+export class MigrationHistory {
+  private engine: SearchEngine;
+  private indexName: string;
+
+  constructor(engine: SearchEngine, indexName: string = '.scaledsearch_history') {
+    this.engine = engine;
+    this.indexName = indexName;
+  }
+
+  async ensureIndex(): Promise<void> {
+    const exists = await this.engine.indexExists(this.indexName);
+    if (!exists) {
+      await this.engine.createIndex(this.indexName, HISTORY_MAPPING);
+    }
+  }
+
+  async getApplied(): Promise<HistoryEntry[]> {
+    const exists = await this.engine.indexExists(this.indexName);
+    if (!exists) return [];
+
+    const result = await this.engine.search(this.indexName, {
+      query: { match_all: {} },
+      sort: [{ version: 'asc' }],
+      size: 10000,
+    });
+
+    return result.hits.hits.map((hit: any) => hit._source as HistoryEntry);
+  }
+
+  async recordSuccess(entry: Omit<HistoryEntry, 'status'>): Promise<void> {
+    await this.ensureIndex();
+    await this.engine.indexDocument(this.indexName, `v${entry.version}`, {
+      ...entry,
+      status: 'success',
+    });
+  }
+
+  async recordFailure(entry: Omit<HistoryEntry, 'status'>): Promise<void> {
+    await this.ensureIndex();
+    await this.engine.indexDocument(this.indexName, `v${entry.version}`, {
+      ...entry,
+      status: 'failed',
+    });
+  }
+}
