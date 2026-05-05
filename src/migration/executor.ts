@@ -27,9 +27,21 @@ async function executeReindex(engine: SearchEngine, source: string, dest: string
 
   // Poll for completion
   let lastLog = 0;
+  let pollFailures = 0;
   while (true) {
     await sleep(3000);
-    const task = await engine.getTask(taskId);
+
+    let task;
+    try {
+      task = await engine.getTask(taskId);
+      pollFailures = 0;
+    } catch (err: any) {
+      pollFailures++;
+      if (pollFailures >= 5) {
+        throw new Error(`Lost connection while polling reindex task ${taskId}. The reindex may still be running on the cluster. Check with: GET /_tasks/${taskId}`);
+      }
+      continue; // Retry
+    }
 
     if (task.error) {
       throw new Error(`Reindex failed: ${JSON.stringify(task.error)}`);
