@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import { isInitialized, loadConfig, getMigrationsDir } from '../config/config';
 import { loadMigrations } from '../migration/parser';
 import { MigrationHistory } from '../migration/history';
-import { ElasticsearchEngine } from '../engine/elasticsearch';
+import { createEngine } from '../engine/factory';
 
 export async function statusCommand(): Promise<void> {
   const cwd = process.cwd();
@@ -25,7 +25,7 @@ export async function statusCommand(): Promise<void> {
   let applied: any[] = [];
   let connected = false;
   try {
-    const engine = new ElasticsearchEngine(config.connection.host, config.connection.auth);
+    const engine = await createEngine(config);
     await engine.connect();
     const history = new MigrationHistory(engine, config.history.index);
     applied = await history.getApplied();

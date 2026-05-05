@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import { isInitialized, loadConfig, getMigrationsDir } from '../config/config';
 import { loadMigrations } from '../migration/parser';
 import { MigrationHistory } from '../migration/history';
-import { ElasticsearchEngine } from '../engine/elasticsearch';
+import { createEngine } from '../engine/factory';
 import { validateMigrations } from '../migration/validator';
 
 export async function validateCommand(): Promise<void> {
@@ -25,7 +25,7 @@ export async function validateCommand(): Promise<void> {
   // Try to get applied history for checksum validation
   let applied: any[] = [];
   try {
-    const engine = new ElasticsearchEngine(config.connection.host, config.connection.auth);
+    const engine = await createEngine(config);
     await engine.connect();
     const history = new MigrationHistory(engine, config.history.index);
     applied = await history.getApplied();

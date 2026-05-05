@@ -47,12 +47,14 @@ export class MigrationHistory {
     if (!exists) return [];
 
     const result = await this.engine.search(this.indexName, {
-      query: { match_all: {} },
+      query: { exists: { field: 'version' } },
       sort: [{ version: 'asc' }],
       size: 10000,
     });
 
-    return result.hits.hits.map((hit: any) => hit._source as HistoryEntry);
+    return result.hits.hits
+      .filter((hit: any) => hit._id !== '_lock')
+      .map((hit: any) => hit._source as HistoryEntry);
   }
 
   async recordSuccess(entry: Omit<HistoryEntry, 'status'>): Promise<void> {
@@ -69,5 +71,45 @@ export class MigrationHistory {
       ...entry,
       status: 'failed',
     });
+  }
+
+  async removeEntry(version: number): Promise<void> {
+    await this.engine.deleteDocument(this.indexName, `v${version}`);
+  }
+
+  async acquireLock(): Promise<boolean> {
+    await this.ensureIndex();
+    try {
+      // Check if lock exists and is recent (< 10 min)
+      const exists = await this.engine.indexExists(this.indexName);
+      if (exists) {
+        const result = await this.engine.search(this.indexName, {
+          query: { term: { _id: '_lock' } },
+        });
+        if (result.hits.hits.length > 0) {
+          const lock = result.hits.hits[0]._source;
+          const lockAge = Date.now() - new Date(lock.locked_at).getTime();
+          if (lockAge < 10 * 60 * 1000) {
+            return false; // Lock is active
+          }
+          // Stale lock — override it
+        }
+      }
+      await this.engine.indexDocument(this.indexName, '_lock', {
+        locked_at: new Date().toISOString(),
+        pid: process.pid,
+      });
+      return true;
+    } catch {
+      return true; // If lock mechanism fails, proceed anyway
+    }
+  }
+
+  async releaseLock(): Promise<void> {
+    try {
+      await this.engine.deleteDocument(this.indexName, '_lock');
+    } catch {
+      // Ignore — lock cleanup is best-effort
+    }
   }
 }

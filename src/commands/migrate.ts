@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import { isInitialized, loadConfig, getMigrationsDir } from '../config/config';
 import { loadMigrations, MigrationFile, MigrationOperation } from '../migration/parser';
 import { MigrationHistory } from '../migration/history';
-import { ElasticsearchEngine } from '../engine/elasticsearch';
+import { createEngine } from '../engine/factory';
 import { SearchEngine } from '../engine/interface';
 import { validateMigrations } from '../migration/validator';
 
@@ -65,7 +65,7 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
     return;
   }
 
-  const engine = new ElasticsearchEngine(config.connection.host, config.connection.auth);
+  const engine = await createEngine(config);
 
   try {
     await engine.connect();
@@ -78,6 +78,14 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
   console.log(chalk.bold(`Connected: ${clusterInfo.engine} ${clusterInfo.version} (${clusterInfo.name})`));
 
   const history = new MigrationHistory(engine, config.history.index);
+
+  // Acquire lock
+  const locked = await history.acquireLock();
+  if (!locked) {
+    console.log(chalk.red('\nAnother migration is in progress. Wait or run ss migrate --force to override.'));
+    process.exit(1);
+  }
+
   const applied = await history.getApplied();
 
   // Validate
@@ -101,6 +109,7 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
   }
 
   if (pending.length === 0) {
+    await history.releaseLock();
     console.log(chalk.green('\nAll migrations already applied.'));
     return;
   }
@@ -155,9 +164,11 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
       console.log(chalk.red(` FAILED (${elapsed}ms)`));
       console.log(chalk.red(`\n  Error: ${err.message}`));
       console.log(chalk.yellow(`\n  Migration stopped at V${m.version}. Fix the issue and run 'ss migrate' again.`));
+      await history.releaseLock();
       process.exit(1);
     }
   }
 
+  await history.releaseLock();
   console.log(chalk.green(`\n✓ ${pending.length} migration(s) applied successfully.`));
 }
