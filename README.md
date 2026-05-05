@@ -88,12 +88,10 @@ rollback:
     index: products
 ```
 
-### Generic API Calls
-
-Use `api_call` for any ES/OpenSearch API — aliases, templates, pipelines, ILM policies:
+### Zero-Downtime Migration (Alias Swap)
 
 ```yaml
-description: "Zero-downtime migration with alias swap"
+description: "Migrate to products_v2 with zero downtime"
 operations:
   - type: create_index
     index: products_v2
@@ -107,13 +105,64 @@ operations:
   - type: reindex
     source: products_v1
     dest: products_v2
-  - type: api_call
-    method: POST
-    path: /_aliases
-    body:
-      actions:
-        - remove: { index: products_v1, alias: products }
-        - add: { index: products_v2, alias: products }
+  - type: swap_alias
+    alias: products
+    from: products_v1
+    to: products_v2
+```
+
+### Alias Operations
+
+```yaml
+# Add alias
+- type: add_alias
+  index: products_v2
+  alias: products
+
+# Remove alias
+- type: remove_alias
+  index: products_v1
+  alias: products
+
+# Atomic swap (remove + add in one call)
+- type: swap_alias
+  alias: products
+  from: products_v1
+  to: products_v2
+```
+
+### Templates & Pipelines
+
+```yaml
+# Index template
+- type: put_template
+  name: logs-template
+  body:
+    index_patterns: ["logs-*"]
+    template:
+      mappings:
+        properties:
+          message: { type: text }
+
+# Ingest pipeline
+- type: put_pipeline
+  name: add-timestamp
+  body:
+    processors:
+      - set: { field: ingested_at, value: "{{_ingest.timestamp}}" }
+```
+
+### Generic API Calls
+
+Use `api_call` as an escape hatch for any ES/OpenSearch REST API:
+
+```yaml
+- type: api_call
+  method: PUT
+  path: /_cluster/settings
+  body:
+    persistent:
+      cluster.routing.allocation.disk.watermark.high: "90%"
 ```
 
 Works with any API: index templates, ingest pipelines, ILM policies, cluster settings, and more.

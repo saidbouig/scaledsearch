@@ -39,19 +39,38 @@ export function validateMigrations(files: MigrationFile[], applied: HistoryEntry
   }
 
   // Check for operations validity
-  const validTypes = ['create_index', 'put_mapping', 'put_settings', 'delete_index', 'reindex', 'close_index', 'open_index', 'api_call'];
+  const noIndexRequired = ['reindex', 'api_call', 'swap_alias', 'put_template', 'delete_template', 'put_pipeline', 'delete_pipeline'];
+  const validTypes = [
+    'create_index', 'put_mapping', 'put_settings', 'delete_index',
+    'reindex', 'close_index', 'open_index',
+    'add_alias', 'remove_alias', 'swap_alias',
+    'put_template', 'delete_template',
+    'put_pipeline', 'delete_pipeline',
+    'api_call',
+  ];
   for (const file of files) {
     for (let i = 0; i < file.operations.length; i++) {
       const op = file.operations[i];
       if (!validTypes.includes(op.type)) {
         errors.push(`V${file.version} op[${i}]: Unknown operation type '${op.type}'. Valid: ${validTypes.join(', ')}`);
       }
-      if (!op.index && op.type !== 'reindex' && op.type !== 'api_call') {
+      if (!op.index && !noIndexRequired.includes(op.type)) {
         errors.push(`V${file.version} op[${i}]: Operation '${op.type}' missing 'index' field`);
       }
       if (op.type === 'reindex') {
         if (!op.source) errors.push(`V${file.version} op[${i}]: Reindex missing 'source' field`);
         if (!op.dest && !op.index) errors.push(`V${file.version} op[${i}]: Reindex missing 'dest' field`);
+      }
+      if (op.type === 'add_alias' || op.type === 'remove_alias') {
+        if (!op.alias) errors.push(`V${file.version} op[${i}]: ${op.type} missing 'alias' field`);
+      }
+      if (op.type === 'swap_alias') {
+        if (!op.alias) errors.push(`V${file.version} op[${i}]: swap_alias missing 'alias' field`);
+        if (!op.from) errors.push(`V${file.version} op[${i}]: swap_alias missing 'from' field`);
+        if (!op.to) errors.push(`V${file.version} op[${i}]: swap_alias missing 'to' field`);
+      }
+      if (op.type === 'put_template' || op.type === 'delete_template' || op.type === 'put_pipeline' || op.type === 'delete_pipeline') {
+        if (!op.name) errors.push(`V${file.version} op[${i}]: ${op.type} missing 'name' field`);
       }
       if (op.type === 'api_call') {
         if (!op.method) errors.push(`V${file.version} op[${i}]: api_call missing 'method' field`);

@@ -23,5 +23,12 @@ export interface SearchEngine {
   reindex(source: string, dest: string, script?: string): Promise<void>;
   closeIndex(index: string): Promise<void>;
   openIndex(index: string): Promise<void>;
+  addAlias(index: string, alias: string): Promise<void>;
+  removeAlias(index: string, alias: string): Promise<void>;
+  swapAlias(alias: string, fromIndex: string, toIndex: string): Promise<void>;
+  putTemplate(name: string, body: any): Promise<void>;
+  deleteTemplate(name: string): Promise<void>;
+  putPipeline(name: string, body: any): Promise<void>;
+  deletePipeline(name: string): Promise<void>;
   apiCall(method: string, path: string, body?: any): Promise<any>;
 }

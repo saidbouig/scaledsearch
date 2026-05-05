@@ -100,6 +100,39 @@ export class ElasticsearchEngine implements SearchEngine {
     await this.client.indices.open({ index });
   }
 
+  async addAlias(index: string, alias: string): Promise<void> {
+    await this.client.indices.putAlias({ index, name: alias });
+  }
+
+  async removeAlias(index: string, alias: string): Promise<void> {
+    await this.client.indices.deleteAlias({ index, name: alias });
+  }
+
+  async swapAlias(alias: string, fromIndex: string, toIndex: string): Promise<void> {
+    await this.client.indices.updateAliases({
+      actions: [
+        { remove: { index: fromIndex, alias } },
+        { add: { index: toIndex, alias } },
+      ],
+    });
+  }
+
+  async putTemplate(name: string, body: any): Promise<void> {
+    await this.client.indices.putIndexTemplate({ name, ...body });
+  }
+
+  async deleteTemplate(name: string): Promise<void> {
+    await this.client.indices.deleteIndexTemplate({ name });
+  }
+
+  async putPipeline(name: string, body: any): Promise<void> {
+    await this.client.ingest.putPipeline({ id: name, ...body });
+  }
+
+  async deletePipeline(name: string): Promise<void> {
+    await this.client.ingest.deletePipeline({ id: name });
+  }
+
   async apiCall(method: string, path: string, body?: any): Promise<any> {
     const opts: any = { method, path };
     if (body) opts.body = body;
