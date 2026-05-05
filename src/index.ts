@@ -12,9 +12,9 @@ import { importCommand } from './commands/import';
 const program = new Command();
 
 program
-  .name('ss')
-  .description('ScaledSearch — The Search Engineer\'s Toolkit for Elasticsearch, OpenSearch, and Solr.')
-  .version('0.2.0');
+  .name('scaledsearch')
+  .description('ScaledSearch — The Search Engineer\'s Toolkit for Elasticsearch and OpenSearch.\n  Shorthand: ss')
+  .version('0.3.0');
 
 // -- ss migrate <subcommand> --
 const migrate = program

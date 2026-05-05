@@ -32,7 +32,7 @@ export async function importCommand(): Promise<void> {
   const cwd = process.cwd();
 
   if (!isInitialized(cwd)) {
-    console.log(chalk.red('Not initialized.') + ` Run ${chalk.cyan('ss migrate init')} first.`);
+    console.log(chalk.red('Not initialized.') + ` Run ${chalk.cyan('scaledsearch migrate init')} first.`);
     process.exit(1);
   }
 
@@ -132,5 +132,5 @@ export async function importCommand(): Promise<void> {
   console.log(chalk.green(`\n✓ Baseline imported: ${filePath}`));
   console.log(`  ${operations.filter(o => o.type === 'create_index').length} index(es), ${operations.filter(o => o.type === 'add_alias').length} alias(es)`);
   console.log(`  Marked as applied (V000) — won't be re-executed.`);
-  console.log(`\nNext: ${chalk.cyan('ss migrate create "your-first-change"')} to start versioning.`);
+  console.log(`\nNext: ${chalk.cyan('scaledsearch migrate create "your-first-change"')} to start versioning.`);
 }

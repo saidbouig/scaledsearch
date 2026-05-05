@@ -81,7 +81,7 @@ export function loadConfig(cwd: string = process.cwd()): ScaledSearchConfig {
   const raw = fs.readFileSync(configPath, 'utf-8');
   const parsed = parse(raw);
   if (!parsed || typeof parsed !== 'object') {
-    throw new Error(`Invalid config file at ${configPath}. Run 'ss migrate init' to recreate.`);
+    throw new Error(`Invalid config file at ${configPath}. Run 'scaledsearch migrate init' to recreate.`);
   }
   const config = { ...DEFAULT_CONFIG, ...parsed };
   if (parsed.connection) {

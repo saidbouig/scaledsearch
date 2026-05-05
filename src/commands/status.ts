@@ -8,7 +8,7 @@ export async function statusCommand(): Promise<void> {
   const cwd = process.cwd();
 
   if (!isInitialized(cwd)) {
-    console.log(chalk.red('Not initialized.') + ` Run ${chalk.cyan('ss migrate init')} first.`);
+    console.log(chalk.red('Not initialized.') + ` Run ${chalk.cyan('scaledsearch migrate init')} first.`);
     process.exit(1);
   }
 
@@ -17,7 +17,7 @@ export async function statusCommand(): Promise<void> {
   const migrations = loadMigrations(migrationsDir);
 
   if (migrations.length === 0) {
-    console.log(chalk.yellow('No migration files found.') + ` Create one with ${chalk.cyan('ss migrate create <name>')}`);
+    console.log(chalk.yellow('No migration files found.') + ` Create one with ${chalk.cyan('scaledsearch migrate create <name>')}`);
     return;
   }
 
@@ -55,6 +55,6 @@ export async function statusCommand(): Promise<void> {
   console.log(`Total: ${migrations.length} | Applied: ${applied.length} | Pending: ${pending.length}`);
 
   if (pending.length > 0) {
-    console.log(`\nRun ${chalk.cyan('ss migrate apply')} to apply pending migrations.`);
+    console.log(`\nRun ${chalk.cyan('scaledsearch migrate apply')} to apply pending migrations.`);
   }
 }

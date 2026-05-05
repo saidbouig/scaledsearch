@@ -8,7 +8,7 @@ export async function diffCommand(): Promise<void> {
   const cwd = process.cwd();
 
   if (!isInitialized(cwd)) {
-    console.log(chalk.red('Not initialized.') + ` Run ${chalk.cyan('ss migrate init')} first.`);
+    console.log(chalk.red('Not initialized.') + ` Run ${chalk.cyan('scaledsearch migrate init')} first.`);
     process.exit(1);
   }
 
@@ -78,5 +78,5 @@ export async function diffCommand(): Promise<void> {
     console.log('');
   }
 
-  console.log(`Run ${chalk.cyan('ss migrate apply')} to apply these changes.`);
+  console.log(`Run ${chalk.cyan('scaledsearch migrate apply')} to apply these changes.`);
 }

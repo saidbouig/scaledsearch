@@ -10,7 +10,7 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
   const cwd = process.cwd();
 
   if (!isInitialized(cwd)) {
-    console.log(chalk.red('Not initialized.') + ` Run ${chalk.cyan('ss migrate init')} first.`);
+    console.log(chalk.red('Not initialized.') + ` Run ${chalk.cyan('scaledsearch migrate init')} first.`);
     process.exit(1);
   }
 
@@ -146,7 +146,7 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
         console.log(chalk.yellow(`\n  Warning: Some operations in V${m.version} may have been partially applied.`));
         console.log(chalk.yellow(`  Check your cluster state before retrying.`));
       }
-      console.log(chalk.yellow(`\n  Migration stopped at V${m.version}. Fix the issue and run 'ss migrate apply' again.`));
+      console.log(chalk.yellow(`\n  Migration stopped at V${m.version}. Fix the issue and run 'scaledsearch migrate apply' again.`));
       await history.releaseLock();
       process.exit(1);
     }
