@@ -24,7 +24,7 @@ npm install -g scaledsearch
 | `ss tune` | Relevance tuning and optimization | Coming soon |
 | `ss cost` | Cost analysis and optimization | Coming soon |
 
-## Quick Start — Migrations
+## Quick Start — New Project
 
 ```bash
 # 1. Initialize in your project
@@ -46,6 +46,24 @@ ss migrate apply
 ss migrate status
 ```
 
+## Quick Start — Existing Cluster
+
+Already have indices in production? Import them as a baseline:
+
+```bash
+# 1. Initialize
+ss migrate init
+
+# 2. Import current cluster state as V000
+ss migrate import
+
+# 3. Start versioning from here
+ss migrate create "add-vector-field"
+ss migrate apply
+```
+
+`ss migrate import` snapshots all indices, mappings, settings, and aliases into `V000__baseline.yaml` and marks it as already applied.
+
 ## Migration Commands
 
 | Command | Description |
@@ -58,6 +76,7 @@ ss migrate status
 | `ss migrate diff` | Show detailed pending changes |
 | `ss migrate validate` | Check migration file integrity |
 | `ss migrate rollback` | Undo last migration |
+| `ss migrate import` | Import existing cluster as V000 baseline |
 
 ## Migration File Format
 
