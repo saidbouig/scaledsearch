@@ -127,6 +127,24 @@ export class OpenSearchEngine implements SearchEngine {
     await this.request('POST', '/_reindex', body);
   }
 
+  async reindexAsync(source: string, dest: string, script?: string): Promise<string> {
+    const body: any = { source: { index: source }, dest: { index: dest } };
+    if (script) body.script = { source: script };
+    const result = await this.request('POST', '/_reindex?wait_for_completion=false', body);
+    return result.task;
+  }
+
+  async getTask(taskId: string): Promise<{ completed: boolean; total?: number; created?: number; error?: any }> {
+    const result = await this.request('GET', `/_tasks/${taskId}`);
+    const status = result.task?.status;
+    return {
+      completed: result.completed,
+      total: status?.total,
+      created: status?.created,
+      error: result.error,
+    };
+  }
+
   async closeIndex(index: string): Promise<void> {
     await this.request('POST', `/${index}/_close`);
   }
