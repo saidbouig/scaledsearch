@@ -9,16 +9,23 @@ interface DetectedEngine {
 }
 
 async function detectEngine(host: string): Promise<DetectedEngine> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
   try {
-    const res = await fetch(host);
+    const res = await fetch(host, { signal: controller.signal });
     const info = await res.json();
     const version = parseInt(info.version?.number?.split('.')[0] || '9', 10);
     if (info.version?.distribution === 'opensearch') {
       return { type: 'opensearch', majorVersion: version };
     }
     return { type: 'elasticsearch', majorVersion: version };
-  } catch {
-    return { type: 'elasticsearch', majorVersion: 9 };
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      throw new Error(`Cannot reach cluster at ${host} (timed out after 10s). Is it running?`);
+    }
+    throw new Error(`Cannot connect to ${host}: ${err.message}`);
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
