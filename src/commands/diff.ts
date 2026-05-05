@@ -46,8 +46,19 @@ export async function diffCommand(): Promise<void> {
     for (const op of m.operations) {
       if (op.type === 'api_call') {
         console.log(`    → ${chalk.yellow(op.method?.toUpperCase() || 'API')} ${op.path}`);
+      } else if (op.type === 'swap_alias') {
+        console.log(`    → ${chalk.yellow('SWAP ALIAS')} "${op.alias}" ${op.from} → ${op.to}`);
+      } else if (op.type === 'add_alias' || op.type === 'remove_alias') {
+        const action = op.type === 'add_alias' ? 'ADD ALIAS' : 'REMOVE ALIAS';
+        console.log(`    → ${chalk.yellow(action)} "${op.alias}" on ${op.index}`);
+      } else if (op.type === 'put_template' || op.type === 'delete_template') {
+        const action = op.type === 'put_template' ? 'PUT TEMPLATE' : 'DELETE TEMPLATE';
+        console.log(`    → ${chalk.yellow(action)} ${op.name}`);
+      } else if (op.type === 'put_pipeline' || op.type === 'delete_pipeline') {
+        const action = op.type === 'put_pipeline' ? 'PUT PIPELINE' : 'DELETE PIPELINE';
+        console.log(`    → ${chalk.yellow(action)} ${op.name}`);
       } else {
-        const action = op.type.replace('_', ' ').toUpperCase();
+        const action = op.type.replace(/_/g, ' ').toUpperCase();
         const target = op.index || `${op.source} → ${op.dest}`;
         console.log(`    → ${chalk.yellow(action)} ${target}`);
       }

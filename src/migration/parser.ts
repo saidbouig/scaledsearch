@@ -3,7 +3,7 @@ import * as path from 'path';
 import { parse } from 'yaml';
 
 export interface MigrationOperation {
-  type: 'create_index' | 'put_mapping' | 'put_settings' | 'delete_index' | 'reindex' | 'close_index' | 'open_index' | 'api_call';
+  type: 'create_index' | 'put_mapping' | 'put_settings' | 'delete_index' | 'reindex' | 'close_index' | 'open_index' | 'add_alias' | 'remove_alias' | 'swap_alias' | 'put_template' | 'delete_template' | 'put_pipeline' | 'delete_pipeline' | 'api_call';
   index: string;
   settings?: any;
   mappings?: any;
@@ -13,6 +13,10 @@ export interface MigrationOperation {
   script?: string;
   method?: string;
   path?: string;
+  alias?: string;
+  from?: string;
+  to?: string;
+  name?: string;
 }
 
 export interface MigrationFile {

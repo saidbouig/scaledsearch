@@ -133,6 +133,43 @@ export class OpenSearchEngine implements SearchEngine {
     await this.request('POST', `/${index}/_open`);
   }
 
+  async addAlias(index: string, alias: string): Promise<void> {
+    await this.request('POST', '/_aliases', {
+      actions: [{ add: { index, alias } }],
+    });
+  }
+
+  async removeAlias(index: string, alias: string): Promise<void> {
+    await this.request('POST', '/_aliases', {
+      actions: [{ remove: { index, alias } }],
+    });
+  }
+
+  async swapAlias(alias: string, fromIndex: string, toIndex: string): Promise<void> {
+    await this.request('POST', '/_aliases', {
+      actions: [
+        { remove: { index: fromIndex, alias } },
+        { add: { index: toIndex, alias } },
+      ],
+    });
+  }
+
+  async putTemplate(name: string, body: any): Promise<void> {
+    await this.request('PUT', `/_index_template/${name}`, body);
+  }
+
+  async deleteTemplate(name: string): Promise<void> {
+    await this.request('DELETE', `/_index_template/${name}`);
+  }
+
+  async putPipeline(name: string, body: any): Promise<void> {
+    await this.request('PUT', `/_ingest/pipeline/${name}`, body);
+  }
+
+  async deletePipeline(name: string): Promise<void> {
+    await this.request('DELETE', `/_ingest/pipeline/${name}`);
+  }
+
   async apiCall(method: string, path: string, body?: any): Promise<any> {
     return await this.request(method.toUpperCase(), path, body);
   }
