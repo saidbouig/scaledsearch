@@ -3,7 +3,7 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![npm version](https://img.shields.io/npm/v/scaledsearch.svg)](https://www.npmjs.com/package/scaledsearch)
 
-**The Search Engineer's Toolkit** — Open source CLI tools for Elasticsearch, OpenSearch, and Solr.
+**The Search Engineer's Toolkit** — Open source CLI tools for Elasticsearch and OpenSearch.
 
 Migrate, audit, benchmark, monitor, tune, and optimize your search infrastructure. One install, all tools.
 
@@ -209,7 +209,7 @@ Tested against: ES 7.17, ES 8.17, ES 9.0, OpenSearch 2.19, OpenSearch 3.0
 |---|---|---|---|
 | Install | `npm i -g` | Maven + Spring Boot | Docker + K8s |
 | Language | Any (standalone CLI) | Java only | Java/Python |
-| Engines | ES + OpenSearch + Solr | ES + OpenSearch | ES → OpenSearch only |
+| Engines | ES + OpenSearch | ES + OpenSearch | ES → OpenSearch only |
 | Dry-run | ✅ (works offline) | ❌ | ❌ |
 | Rollback | ✅ | ❌ | ❌ |
 | Schema versioning | ✅ | ✅ | ❌ |
