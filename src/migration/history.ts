@@ -96,9 +96,8 @@ export class MigrationHistory {
           const lock = result.hits.hits[0]._source;
           const lockAge = Date.now() - new Date(lock.locked_at).getTime();
           if (lockAge > 10 * 60 * 1000) {
-            // Stale lock — delete and retry
-            await this.engine.deleteDocument(this.indexName, '_lock');
-            await this.engine.createDocument(this.indexName, '_lock', {
+            // Stale lock — overwrite (last writer wins, safe for concurrent access)
+            await this.engine.indexDocument(this.indexName, '_lock', {
               locked_at: new Date().toISOString(),
               pid: process.pid,
             });

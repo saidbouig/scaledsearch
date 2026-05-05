@@ -77,6 +77,7 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
   // Validate
   const validation = validateMigrations(migrations, applied);
   if (!validation.valid) {
+    await history.releaseLock();
     console.log(chalk.red('\nValidation errors:'));
     validation.errors.forEach(e => console.log(`  ${chalk.red('✗')} ${e}`));
     process.exit(1);
