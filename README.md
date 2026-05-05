@@ -3,48 +3,61 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![npm version](https://img.shields.io/npm/v/scaledsearch.svg)](https://www.npmjs.com/package/scaledsearch)
 
-**Flyway for Search Engines** — Version-controlled schema migrations for Elasticsearch, OpenSearch, and Solr.
+**The Search Engineer's Toolkit** — Open source CLI tools for Elasticsearch, OpenSearch, and Solr.
 
-Every database has Flyway or Liquibase. Search engines have had... nothing. Until now.
+Migrate, audit, benchmark, monitor, tune, and optimize your search infrastructure. One install, all tools.
 
-## The Problem
-
-- ES upgrades break things. 40% codebase rewrite per major version.
-- No way to version-control index mappings across environments.
-- Teams lose data during migrations ("we lost 35K docs even though reindex succeeded").
-- No rollback. No dry-run. No safety net.
-
-## The Solution
+## Install
 
 ```bash
 npm install -g scaledsearch
-
-ss init                          # Initialize project
-ss create "add-products-index"   # Create versioned migration
-ss status                        # See what's pending
-ss migrate --dry-run             # Preview changes safely
-ss migrate                       # Apply to cluster
-ss validate                      # Check integrity
 ```
 
-## Quick Start
+## The Toolkit
+
+| Tool | Description | Status |
+|------|-------------|--------|
+| `ss migrate` | Version-controlled schema migrations | ✅ Available |
+| `ss audit` | Cluster health, security, and performance scan | Coming soon |
+| `ss bench` | Query latency and throughput benchmarking | Coming soon |
+| `ss monitor` | Continuous search quality monitoring | Coming soon |
+| `ss tune` | Relevance tuning and optimization | Coming soon |
+| `ss cost` | Cost analysis and optimization | Coming soon |
+
+## Quick Start — Migrations
 
 ```bash
-# 1. Install
-npm install -g scaledsearch
-
-# 2. Initialize in your project
+# 1. Initialize in your project
 ss init
 
-# 3. Create your first migration
-ss create "initial-schema"
+# 2. Create a migration
+ss create "add-products-index"
 
-# 4. Edit the generated YAML file
-# migrations/V001__initial-schema.yaml
+# 3. Edit the generated YAML file
+# migrations/V001__add-products-index.yaml
+
+# 4. Preview changes
+ss migrate --dry-run
 
 # 5. Apply
 ss migrate
+
+# 6. Check status
+ss status
 ```
+
+## Migration Commands
+
+| Command | Description |
+|---------|-------------|
+| `ss init` | Initialize ScaledSearch in current directory |
+| `ss create <name>` | Create a new versioned migration file |
+| `ss status` | Show applied vs pending migrations |
+| `ss migrate` | Apply pending migrations to cluster |
+| `ss migrate --dry-run` | Preview without applying (works offline) |
+| `ss diff` | Show detailed pending changes |
+| `ss validate` | Check migration file integrity |
+| `ss rollback` | Undo last migration |
 
 ## Migration File Format
 
@@ -70,28 +83,20 @@ operations:
           type: float
         created_at:
           type: date
+rollback:
+  - type: delete_index
+    index: products
 ```
-
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `ss init` | Initialize ScaledSearch in current directory |
-| `ss create <name>` | Create a new versioned migration file |
-| `ss status` | Show applied vs pending migrations |
-| `ss migrate` | Apply pending migrations to cluster |
-| `ss migrate --dry-run` | Preview without applying (works offline) |
-| `ss diff` | Show detailed pending changes |
-| `ss validate` | Check migration file integrity |
-| `ss rollback` | Undo last migration |
 
 ## Supported Engines
 
 | Engine | Versions | Status |
 |--------|----------|--------|
-| Elasticsearch | 7.x, 8.x, 9.x | ✅ Supported |
-| OpenSearch | 1.x, 2.x, 3.x | ✅ Supported |
-| Solr | 8.x, 9.x | 🔜 Coming soon |
+| Elasticsearch | 7.x, 8.x, 9.x | ✅ Verified |
+| OpenSearch | 1.x, 2.x, 3.x | ✅ Verified |
+| Solr | 8.x, 9.x | Coming soon |
+
+Tested against: ES 7.17, ES 8.17, ES 9.0, OpenSearch 2.19, OpenSearch 3.0
 
 ## Why ScaledSearch?
 
@@ -100,15 +105,16 @@ operations:
 | Install | `npm i -g` | Maven + Spring Boot | Docker + K8s |
 | Language | Any (standalone CLI) | Java only | Java/Python |
 | Engines | ES + OpenSearch + Solr | ES + OpenSearch | ES → OpenSearch only |
-| Direction | Any → Any | Same-engine only | One-way |
 | Dry-run | ✅ (works offline) | ❌ | ❌ |
+| Rollback | ✅ | ❌ | ❌ |
 | Schema versioning | ✅ | ✅ | ❌ |
+| Migration locking | ✅ | ✅ | ❌ |
+| Checksum validation | ✅ | ✅ | ❌ |
 
 ## Configuration
 
-ScaledSearch stores config in `.scaledsearch/config.yaml`:
-
 ```yaml
+# .scaledsearch/config.yaml
 engine: elasticsearch
 connection:
   host: http://localhost:9200
@@ -128,12 +134,19 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
 ## Roadmap
 
-- [x] Core CLI (init, create, status, migrate, diff, validate)
+### Migrations
+- [x] Core CLI (init, create, status, migrate, diff, validate, rollback)
 - [x] Elasticsearch 7-9 support
 - [x] OpenSearch 2-3 support
-- [x] Rollback support
+- [x] Migration locking
+- [x] Checksum validation
 - [ ] Solr support
 - [ ] CI/CD integration (GitHub Actions)
 - [ ] Multi-cluster environments
-- [ ] Web dashboard
-- [ ] AI-powered migration suggestions
+
+### Toolkit
+- [ ] `ss audit` — cluster health check
+- [ ] `ss bench` — performance benchmarking
+- [ ] `ss monitor` — continuous monitoring
+- [ ] `ss tune` — relevance tuning
+- [ ] `ss cost` — cost optimization
