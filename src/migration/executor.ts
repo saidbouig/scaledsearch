@@ -70,7 +70,13 @@ export async function executeOperation(engine: SearchEngine, op: MigrationOperat
       if (exists) {
         throw new Error(`Index '${op.index}' already exists. Use put_mapping or put_settings to modify, or delete_index first.`);
       }
-      await engine.createIndex(op.index, { settings: op.settings, mappings: op.mappings || op.body });
+      // Accept either:
+      //   mappings: { properties: { ... } }       (direct)
+      //   body:     { mappings: { ... }, settings: { ... } }   (Flyway-style wrapper)
+      const fromBody = op.body && typeof op.body === 'object' ? op.body : {};
+      const mappings = op.mappings ?? fromBody.mappings ?? (op.body && !fromBody.mappings && !fromBody.settings ? op.body : undefined);
+      const settings = op.settings ?? fromBody.settings;
+      await engine.createIndex(op.index, { settings, mappings });
       break;
     }
     case 'put_mapping':
