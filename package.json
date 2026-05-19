@@ -11,12 +11,32 @@
     "dev": "tsx src/index.ts",
     "build": "tsup",
     "start": "node dist/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run test/unit",
+    "test:unit": "vitest run test/unit",
+    "test:integration": "vitest run test/integration",
+    "test:all": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "docker:up": "docker compose up -d --wait",
+    "docker:down": "docker compose down -v"
   },
-  "keywords": ["elasticsearch", "opensearch", "migration", "schema", "flyway", "search", "cli", "devtools"],
+  "keywords": [
+    "elasticsearch",
+    "opensearch",
+    "migration",
+    "schema",
+    "flyway",
+    "search",
+    "cli",
+    "devtools"
+  ],
   "author": "Said Bouigherdaine <saidbouigherdaine@gmail.com>",
   "license": "MIT",
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/saidbouig/scaledsearch.git"
@@ -30,10 +50,12 @@
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
+    "@vitest/coverage-v8": "^4.1.6",
     "chalk": "^5.6.2",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=18"
