@@ -18,7 +18,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "docker:up": "docker compose up -d --wait",
-    "docker:down": "docker compose down -v"
+    "docker:down": "docker compose down -v",
+    "prepublishOnly": "npm run test:unit && npm run build"
   },
   "keywords": [
     "elasticsearch",
