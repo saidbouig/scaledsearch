@@ -1,0 +1,24 @@
+# Changelog
+
+All notable changes to ScaledSearch are documented here.
+This project follows [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
+
+## [1.0.2] - 2026-05-19
+
+### Fixed
+- `create_index` operations using Flyway-style `body: { mappings: ... }` were
+  double-wrapped before being sent to the cluster, causing Elasticsearch to
+  reject them with `mapper_parsing_exception: Root mapping definition has
+  unsupported parameters`. Both `mappings:` and `body:` shapes now normalize
+  correctly. ([#6](https://github.com/saidbouig/scaledsearch/pull/6))
+
+### Added
+- Test suite (Vitest): 42 unit tests + 26 integration tests = 68 total.
+- Docker Compose harness with Elasticsearch 9.0 + OpenSearch 2.19 for
+  integration tests.
+- `npm test`, `test:unit`, `test:integration`, `test:all`, `test:watch`,
+  `test:coverage`, `docker:up`, `docker:down` scripts.
+
+## [1.0.1] - 2026-05-05
+
+- Initial public release.
