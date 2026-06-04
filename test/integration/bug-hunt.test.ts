@@ -37,7 +37,7 @@ function setHistoryIndex(tmp: string, historyIndex: string) {
   const content = fs.readFileSync(p, 'utf-8');
   fs.writeFileSync(
     p,
-    content.replace(/index:.*\.scaledsearch_history/, `index: "${historyIndex}"`),
+    content.replace(/index:.*$/m, `index: "${historyIndex}"`),
     'utf-8',
   );
 }

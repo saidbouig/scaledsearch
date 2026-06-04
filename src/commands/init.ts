@@ -1,5 +1,11 @@
 import chalk from 'chalk';
-import { isInitialized, initConfig, getConfigDir, getMigrationsDir } from '../config/config';
+import {
+  isInitialized,
+  initConfig,
+  loadConfig,
+  getConfigDir,
+  getMigrationsDir,
+} from '../config/config';
 
 export async function initCommand(): Promise<void> {
   const cwd = process.cwd();
@@ -11,10 +17,12 @@ export async function initCommand(): Promise<void> {
 
   const configPath = initConfig(cwd);
   const migrationsDir = getMigrationsDir(cwd);
+  const config = loadConfig(cwd);
 
   console.log(chalk.green('Initialized ScaledSearch.'));
   console.log(`  Config:     ${configPath}`);
   console.log(`  Migrations: ${migrationsDir}`);
+  console.log(`  History:    ${config.history.index}`);
   console.log('');
   console.log(`Next: ${chalk.cyan('scaledsearch migrate create "initial-schema"')} to create your first migration.`);
 }

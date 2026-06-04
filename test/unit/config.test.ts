@@ -9,6 +9,7 @@ import {
   getConfigPath,
   getConfigDir,
   getMigrationsDir,
+  deriveHistoryIndexName,
 } from '../../src/config/config';
 import { makeTmpDir, cleanupTmpDir } from '../helpers/tmpDir';
 
@@ -52,7 +53,104 @@ describe('config', () => {
       expect(parsed.engine).toBe('elasticsearch');
       expect(parsed.connection.host).toBe('http://localhost:9200');
       expect(parsed.migrations.location).toBe('./migrations');
-      expect(parsed.history.index).toBe('.scaledsearch_history');
+      // History index is project-scoped: <prefix>_<name>_<hash6>
+      expect(parsed.history.index).toMatch(/^\.scaledsearch_history_[a-z0-9_-]+_[0-9a-f]{6}$/);
+    });
+
+    it('writes a project-scoped history index that includes the project name', () => {
+      const configPath = initConfig(tmp);
+      const raw = fs.readFileSync(configPath, 'utf-8');
+      const parsed = parse(raw);
+      // Tmp dir basename is something like `scaledsearch-test-xxxxxx`;
+      // a sanitized form of it should appear in the index name.
+      const basename = path.basename(tmp).toLowerCase().replace(/[^a-z0-9_-]+/g, '_');
+      expect(parsed.history.index).toContain(basename.slice(0, 20));
+    });
+  });
+
+  describe('deriveHistoryIndexName', () => {
+    it('uses cwd basename when no package.json is present', () => {
+      const name = deriveHistoryIndexName(tmp);
+      expect(name).toMatch(/^\.scaledsearch_history_[a-z0-9_-]+_[0-9a-f]{6}$/);
+    });
+
+    it('uses package.json name when present', () => {
+      fs.writeFileSync(
+        path.join(tmp, 'package.json'),
+        JSON.stringify({ name: 'acme-payments' }),
+        'utf-8',
+      );
+      const name = deriveHistoryIndexName(tmp);
+      expect(name).toMatch(/^\.scaledsearch_history_acme-payments_[0-9a-f]{6}$/);
+    });
+
+    it('strips npm scope from scoped package names', () => {
+      fs.writeFileSync(
+        path.join(tmp, 'package.json'),
+        JSON.stringify({ name: '@acme/payments' }),
+        'utf-8',
+      );
+      const name = deriveHistoryIndexName(tmp);
+      expect(name).toMatch(/^\.scaledsearch_history_payments_[0-9a-f]{6}$/);
+    });
+
+    it('sanitizes illegal characters', () => {
+      fs.writeFileSync(
+        path.join(tmp, 'package.json'),
+        JSON.stringify({ name: 'My Project!@#$%' }),
+        'utf-8',
+      );
+      const name = deriveHistoryIndexName(tmp);
+      // Only [a-z0-9_-] allowed between the prefix and hash
+      expect(name).toMatch(/^\.scaledsearch_history_[a-z0-9_-]+_[0-9a-f]{6}$/);
+    });
+
+    it('falls back to basename when package.json is malformed', () => {
+      fs.writeFileSync(path.join(tmp, 'package.json'), '{not valid json', 'utf-8');
+      const name = deriveHistoryIndexName(tmp);
+      expect(name).toMatch(/^\.scaledsearch_history_[a-z0-9_-]+_[0-9a-f]{6}$/);
+    });
+
+    it('falls back to basename when package.json has no name field', () => {
+      fs.writeFileSync(
+        path.join(tmp, 'package.json'),
+        JSON.stringify({ version: '1.0.0' }),
+        'utf-8',
+      );
+      const name = deriveHistoryIndexName(tmp);
+      expect(name).toMatch(/^\.scaledsearch_history_[a-z0-9_-]+_[0-9a-f]{6}$/);
+    });
+
+    it('two different paths with the same project name produce different hashes', () => {
+      const tmp2 = makeTmpDir();
+      try {
+        fs.writeFileSync(
+          path.join(tmp, 'package.json'),
+          JSON.stringify({ name: 'api' }),
+          'utf-8',
+        );
+        fs.writeFileSync(
+          path.join(tmp2, 'package.json'),
+          JSON.stringify({ name: 'api' }),
+          'utf-8',
+        );
+        const a = deriveHistoryIndexName(tmp);
+        const b = deriveHistoryIndexName(tmp2);
+        expect(a).not.toBe(b);
+        expect(a).toMatch(/^\.scaledsearch_history_api_[0-9a-f]{6}$/);
+        expect(b).toMatch(/^\.scaledsearch_history_api_[0-9a-f]{6}$/);
+      } finally {
+        cleanupTmpDir(tmp2);
+      }
+    });
+
+    it('the same path produces the same name across calls (deterministic)', () => {
+      fs.writeFileSync(
+        path.join(tmp, 'package.json'),
+        JSON.stringify({ name: 'stable' }),
+        'utf-8',
+      );
+      expect(deriveHistoryIndexName(tmp)).toBe(deriveHistoryIndexName(tmp));
     });
   });
 
