@@ -23,6 +23,14 @@ interface VirtualClusterState {
   pipelines: Set<string>;
 }
 
+// Index names with `*`, comma-lists, or the special `_all` token target
+// multiple indices at apply time. The simulator can't reason about whether
+// they match anything — skip the existence check (return true === "looks
+// like a wildcard, don't check") rather than emit a false-positive error.
+function isWildcard(name: string): boolean {
+  return name.includes('*') || name.includes(',') || name === '_all';
+}
+
 function emptyState(): VirtualClusterState {
   return {
     indices: new Set(),
@@ -56,6 +64,10 @@ function applyOp(
 
   switch (op.type) {
     case 'create_index': {
+      if (isWildcard(op.index)) {
+        errors.push(`${tag}: index name '${op.index}' contains wildcards or commas — create_index requires a concrete name.`);
+        return;
+      }
       if (state.indices.has(op.index)) {
         errors.push(`${tag}: index '${op.index}' already exists — declared by an earlier migration without a delete_index between.`);
         return;
@@ -64,6 +76,11 @@ function applyOp(
       break;
     }
     case 'delete_index': {
+      // Wildcards (`logs-2024-*`, `_all`) target multiple indices — the
+      // simulator can't tell which ones, so skip the check and the state
+      // mutation. The op will still run at apply time against the real
+      // cluster.
+      if (isWildcard(op.index)) break;
       if (!state.indices.has(op.index)) {
         errors.push(`${tag}: index '${op.index}' does not exist — no prior migration creates it.`);
         return;
@@ -76,12 +93,14 @@ function applyOp(
     }
     case 'put_mapping':
     case 'put_settings': {
+      if (isWildcard(op.index)) break;
       if (!state.indices.has(op.index)) {
         errors.push(`${tag}: index '${op.index}' does not exist — no prior migration creates it.`);
       }
       break;
     }
     case 'close_index': {
+      if (isWildcard(op.index)) break;
       if (!state.indices.has(op.index)) {
         errors.push(`${tag}: index '${op.index}' does not exist — no prior migration creates it.`);
         return;
@@ -94,6 +113,7 @@ function applyOp(
       break;
     }
     case 'open_index': {
+      if (isWildcard(op.index)) break;
       if (!state.indices.has(op.index)) {
         errors.push(`${tag}: index '${op.index}' does not exist — no prior migration creates it.`);
         return;
@@ -112,6 +132,7 @@ function applyOp(
     }
     case 'remove_alias': {
       if (!op.alias) return;
+      if (isWildcard(op.index)) break;
       const set = state.aliases.get(op.alias);
       if (!set || !set.has(op.index)) {
         errors.push(`${tag}: alias '${op.alias}' is not currently attached to '${op.index}'.`);
@@ -138,8 +159,14 @@ function applyOp(
       break;
     }
     case 'reindex': {
-      if (op.source && !state.indices.has(op.source)) {
+      if (op.source && !isWildcard(op.source) && !state.indices.has(op.source)) {
         errors.push(`${tag}: source index '${op.source}' does not exist.`);
+      }
+      // ES reindex requires dest to exist (or match an index template). We
+      // only enforce the simpler case; users with templates can use api_call.
+      const dest = op.dest || op.index;
+      if (dest && !isWildcard(dest) && !state.indices.has(dest)) {
+        errors.push(`${tag}: destination index '${dest}' does not exist — reindex requires the destination to be created first (use create_index in a prior op).`);
       }
       break;
     }

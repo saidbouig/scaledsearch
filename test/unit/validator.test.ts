@@ -430,4 +430,100 @@ describe('validator', () => {
       expect(result.valid).toBe(true);
     });
   });
+
+  describe('file-only state simulation — wildcards', () => {
+    it('allows put_mapping against a wildcard index name', () => {
+      // Common ES pattern: time-based indices rolled forward, then bulk
+      // mapping update via `logs-*`. The simulator can't expand wildcards,
+      // so it must skip the existence check rather than false-flag.
+      const result = validateMigrations(
+        [
+          migration(1, [{ type: 'create_index', index: 'logs-2025-01' }]),
+          migration(2, [
+            { type: 'put_mapping', index: 'logs-*', body: { properties: {} } },
+          ]),
+        ],
+        [],
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it('allows put_settings against a comma-separated index list', () => {
+      const result = validateMigrations(
+        [migration(1, [{ type: 'put_settings', index: 'a,b,c', settings: {} }])],
+        [],
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it('allows delete_index with a wildcard', () => {
+      const result = validateMigrations(
+        [migration(1, [{ type: 'delete_index', index: 'logs-2024-*' }])],
+        [],
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it('allows _all token', () => {
+      const result = validateMigrations(
+        [migration(1, [{ type: 'put_mapping', index: '_all', body: {} }])],
+        [],
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it('rejects create_index with a wildcard name', () => {
+      const result = validateMigrations(
+        [migration(1, [{ type: 'create_index', index: 'logs-*' }])],
+        [],
+      );
+      expect(result.valid).toBe(false);
+      expect(result.errors.some(e => e.includes('contains wildcards'))).toBe(true);
+    });
+  });
+
+  describe('file-only state simulation — reindex', () => {
+    it('requires the destination index to exist (create_index in a prior op)', () => {
+      const result = validateMigrations(
+        [
+          migration(1, [
+            { type: 'create_index', index: 'src' },
+            { type: 'reindex', index: '', source: 'src', dest: 'dst_missing' },
+          ]),
+        ],
+        [],
+      );
+      expect(result.valid).toBe(false);
+      expect(
+        result.errors.some(e => e.includes("destination index 'dst_missing'")),
+      ).toBe(true);
+    });
+
+    it('passes when destination is created in the same migration', () => {
+      const result = validateMigrations(
+        [
+          migration(1, [
+            { type: 'create_index', index: 'src' },
+            { type: 'create_index', index: 'dst' },
+            { type: 'reindex', index: '', source: 'src', dest: 'dst' },
+          ]),
+        ],
+        [],
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it('allows wildcard source (skip check)', () => {
+      const result = validateMigrations(
+        [
+          migration(1, [
+            { type: 'create_index', index: 'consolidated' },
+            { type: 'reindex', index: '', source: 'logs-*', dest: 'consolidated' },
+          ]),
+        ],
+        [],
+      );
+      expect(result.valid).toBe(true);
+    });
+  });
 });
