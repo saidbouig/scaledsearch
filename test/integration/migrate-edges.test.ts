@@ -232,8 +232,24 @@ operations:
     expect(result.stdout).toMatch(/FAILED|already exists/i);
   });
 
-  it('subsequent apply still sees V001 as pending (failed != applied)', () => {
+  it('status shows V001 as failed (not applied, not silently pending)', () => {
     const status = runCli(tmp, 'migrate status');
-    expect(status.stdout.toLowerCase()).toContain('pending');
+    // The previous assertion only checked that the word "pending" appeared
+    // anywhere in the output — but "Pending: 0" in the counts line always
+    // matched, so the test passed even when failed migrations were treated
+    // as successfully applied. Assert against the per-migration line.
+    expect(status.stdout).toMatch(/V001\s*\|\s*failed/);
+    expect(status.stdout).not.toMatch(/V001\s*\|\s*applied/);
+  });
+
+  it('subsequent apply re-runs the failed migration (does not skip it)', () => {
+    // A failed migration must not be treated as "already applied" — that would
+    // silently leave the user's schema incomplete. Re-running apply should
+    // attempt V001 again (and fail again, since the underlying problem is
+    // still there).
+    const result = runCli(tmp, 'migrate apply');
+    expect(result.status).not.toBe(0);
+    expect(result.stdout).toMatch(/Applying V001|FAILED|already exists/i);
+    expect(result.stdout).not.toMatch(/All migrations already applied/i);
   });
 });

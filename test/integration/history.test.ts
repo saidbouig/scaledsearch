@@ -57,7 +57,7 @@ describeIf(`MigrationHistory against ${ES_HOST}`, () => {
       expect(applied[0].checksum).toBe('abc123');
     });
 
-    it('persists a failure entry that getApplied returns', async () => {
+    it('persists a failure entry that getApplied does NOT return but getAllEntries does', async () => {
       await history.recordFailure({
         version: 1,
         description: 'broken',
@@ -66,9 +66,18 @@ describeIf(`MigrationHistory against ${ES_HOST}`, () => {
         execution_time_ms: 999,
         engine: 'elasticsearch',
         engine_version: '9.0.0',
+        error_message: 'something blew up',
       });
+      // getApplied returns only successful migrations — a failed one must not
+      // shadow the apply loop into thinking the migration is done.
       const applied = await history.getApplied();
-      expect(applied[0].status).toBe('failed');
+      expect(applied).toHaveLength(0);
+
+      // getAllEntries surfaces failures for status/forensics.
+      const all = await history.getAllEntries();
+      expect(all).toHaveLength(1);
+      expect(all[0].status).toBe('failed');
+      expect(all[0].error_message).toBe('something blew up');
     });
 
     it('returns entries sorted by version ascending', async () => {
