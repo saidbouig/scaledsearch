@@ -23,18 +23,23 @@ export async function statusCommand(): Promise<void> {
 
   // Try to connect to cluster for applied status
   let applied: any[] = [];
+  let allEntries: any[] = [];
   let connected = false;
   try {
     const engine = await createEngine(config);
     await engine.connect();
     const history = new MigrationHistory(engine, config.history.index);
     applied = await history.getApplied();
+    allEntries = await history.getAllEntries();
     connected = true;
   } catch {
     // Offline mode — just show filesystem state
   }
 
   const appliedVersions = new Set(applied.map(a => a.version));
+  const failedVersions = new Set(
+    allEntries.filter(e => e.status === 'failed').map(e => e.version),
+  );
 
   console.log(chalk.bold('Migration Status'));
   if (connected) {
@@ -45,14 +50,26 @@ export async function statusCommand(): Promise<void> {
   console.log('');
 
   for (const m of migrations) {
-    const isApplied = appliedVersions.has(m.version);
-    const status = isApplied ? chalk.green('applied') : chalk.yellow('pending');
+    let status: string;
+    if (appliedVersions.has(m.version)) {
+      status = chalk.green('applied');
+    } else if (failedVersions.has(m.version)) {
+      status = chalk.red('failed');
+    } else {
+      status = chalk.yellow('pending');
+    }
     console.log(`  V${String(m.version).padStart(3, '0')} | ${status} | ${m.description}`);
   }
 
-  const pending = migrations.filter(m => !appliedVersions.has(m.version));
+  const pending = migrations.filter(
+    m => !appliedVersions.has(m.version) && !failedVersions.has(m.version),
+  );
+  const failedCount = migrations.filter(m => failedVersions.has(m.version)).length;
   console.log('');
-  console.log(`Total: ${migrations.length} | Applied: ${applied.length} | Pending: ${pending.length}`);
+  const parts = [`Total: ${migrations.length}`, `Applied: ${applied.length}`];
+  if (failedCount > 0) parts.push(`Failed: ${failedCount}`);
+  parts.push(`Pending: ${pending.length}`);
+  console.log(parts.join(' | '));
 
   if (pending.length > 0) {
     console.log(`\nRun ${chalk.cyan('scaledsearch migrate apply')} to apply pending migrations.`);

@@ -9,6 +9,7 @@ export interface HistoryEntry {
   status: 'success' | 'failed';
   engine: string;
   engine_version: string;
+  error_message?: string;
 }
 
 const HISTORY_MAPPING = {
@@ -22,6 +23,7 @@ const HISTORY_MAPPING = {
       status: { type: 'keyword' as const },
       engine: { type: 'keyword' as const },
       engine_version: { type: 'keyword' as const },
+      error_message: { type: 'text' as const },
     },
   },
 };
@@ -43,6 +45,22 @@ export class MigrationHistory {
   }
 
   async getApplied(): Promise<HistoryEntry[]> {
+    const exists = await this.engine.indexExists(this.indexName);
+    if (!exists) return [];
+
+    const result = await this.engine.search(this.indexName, {
+      query: { exists: { field: 'version' } },
+      sort: [{ version: 'asc' }],
+      size: 10000,
+    });
+
+    return result.hits.hits
+      .filter((hit: any) => hit._id !== '_lock')
+      .map((hit: any) => hit._source as HistoryEntry)
+      .filter((entry: HistoryEntry) => entry.status === 'success');
+  }
+
+  async getAllEntries(): Promise<HistoryEntry[]> {
     const exists = await this.engine.indexExists(this.indexName);
     if (!exists) return [];
 

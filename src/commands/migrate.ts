@@ -148,6 +148,7 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
         execution_time_ms: elapsed,
         engine: clusterInfo.engine,
         engine_version: clusterInfo.version,
+        error_message: err.message,
       });
 
       console.log(chalk.red(` FAILED (${elapsed}ms)`));
