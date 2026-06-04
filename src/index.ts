@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
+import { version as pkgVersion } from '../package.json';
 import { initCommand } from './commands/init';
 import { createCommand } from './commands/create';
 import { statusCommand } from './commands/status';
@@ -14,7 +15,7 @@ const program = new Command();
 program
   .name('scaledsearch')
   .description('ScaledSearch — The Search Engineer\'s Toolkit for Elasticsearch and OpenSearch.\n  Shorthand: ss')
-  .version('1.0.1');
+  .version(pkgVersion);
 
 // -- ss migrate <subcommand> --
 const migrate = program
