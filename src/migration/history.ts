@@ -96,12 +96,27 @@ export class MigrationHistory {
           const lock = result.hits.hits[0]._source;
           const lockAge = Date.now() - new Date(lock.locked_at).getTime();
           if (lockAge > 10 * 60 * 1000) {
-            // Stale lock — overwrite (last writer wins, safe for concurrent access)
-            await this.engine.indexDocument(this.indexName, '_lock', {
-              locked_at: new Date().toISOString(),
-              pid: process.pid,
-            });
-            return true;
+            // Stale lock — atomically replace it. Delete first, then attempt
+            // an op_type=create write. If two processes both see the stale
+            // lock and race here, the delete is idempotent but the create
+            // is atomic: exactly one process's create succeeds, the other
+            // throws and returns false.
+            try {
+              await this.engine.deleteDocument(this.indexName, '_lock');
+            } catch {
+              // Already deleted by another racer — fine, the create will
+              // either succeed (if no one else has created it yet) or fail
+              // (if a racer beat us to it).
+            }
+            try {
+              await this.engine.createDocument(this.indexName, '_lock', {
+                locked_at: new Date().toISOString(),
+                pid: process.pid,
+              });
+              return true;
+            } catch {
+              return false; // Another process won the stale-lock recovery race
+            }
           }
         }
         return false; // Active lock held by another process
