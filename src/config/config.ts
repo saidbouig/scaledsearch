@@ -93,9 +93,20 @@ export function deriveHistoryIndexName(cwd: string = process.cwd()): string {
     .replace(/^[_-]+|[_-]+$/g, '')
     .slice(0, 50) || 'project';
 
+  // Resolve symlinks before hashing so a project accessed via a symlinked
+  // path (common in monorepos with `packages/*` symlinked under `services/*`,
+  // or macOS `/var` -> `/private/var`) hashes to the same name as when
+  // accessed via its canonical path. Fall back to path.resolve if the dir
+  // somehow doesn't exist yet.
+  let canonical: string;
+  try {
+    canonical = fs.realpathSync(path.resolve(cwd));
+  } catch {
+    canonical = path.resolve(cwd);
+  }
   const hash = crypto
     .createHash('sha256')
-    .update(path.resolve(cwd))
+    .update(canonical)
     .digest('hex')
     .slice(0, 6);
 

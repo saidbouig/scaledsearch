@@ -152,6 +152,58 @@ describe('config', () => {
       );
       expect(deriveHistoryIndexName(tmp)).toBe(deriveHistoryIndexName(tmp));
     });
+
+    it('a symlinked path produces the same name as the canonical path', () => {
+      // Real-world case: monorepos with `packages/*` symlinked under
+      // `services/*`, or macOS `/var` -> `/private/var`. The same project
+      // accessed two ways must hash identically — otherwise users on Linux
+      // and macOS would get different history indices for the same project.
+      fs.writeFileSync(
+        path.join(tmp, 'package.json'),
+        JSON.stringify({ name: 'symlinked' }),
+        'utf-8',
+      );
+      const linkPath = `${tmp}_link`;
+      fs.symlinkSync(tmp, linkPath, 'dir');
+      try {
+        expect(deriveHistoryIndexName(linkPath)).toBe(deriveHistoryIndexName(tmp));
+      } finally {
+        fs.unlinkSync(linkPath);
+      }
+    });
+
+    it('caps very long project names at 50 chars (well under ES 255-byte limit)', () => {
+      const longName = 'a'.repeat(200);
+      fs.writeFileSync(
+        path.join(tmp, 'package.json'),
+        JSON.stringify({ name: longName }),
+        'utf-8',
+      );
+      const name = deriveHistoryIndexName(tmp);
+      // .scaledsearch_history_ (22) + name (≤50) + _ (1) + hash (6) = ≤79
+      expect(name.length).toBeLessThanOrEqual(79);
+      expect(name).toMatch(/^\.scaledsearch_history_a{50}_[0-9a-f]{6}$/);
+    });
+
+    it('falls back to "project" when sanitized name is empty', () => {
+      fs.writeFileSync(
+        path.join(tmp, 'package.json'),
+        JSON.stringify({ name: '@@@///' }),
+        'utf-8',
+      );
+      const name = deriveHistoryIndexName(tmp);
+      expect(name).toMatch(/^\.scaledsearch_history_project_[0-9a-f]{6}$/);
+    });
+
+    it('falls back to "project" when package.json name is whitespace only', () => {
+      fs.writeFileSync(
+        path.join(tmp, 'package.json'),
+        JSON.stringify({ name: '   ' }),
+        'utf-8',
+      );
+      const name = deriveHistoryIndexName(tmp);
+      expect(name).toMatch(/^\.scaledsearch_history_project_[0-9a-f]{6}$/);
+    });
   });
 
   describe('loadConfig', () => {
@@ -165,6 +217,31 @@ describe('config', () => {
       initConfig(tmp);
       const config = loadConfig(tmp);
       expect(config.engine).toBe('elasticsearch');
+    });
+
+    it('preserves a pre-1.0.6 config with the old shared default history index', () => {
+      // Upgrade path: a user on an older scaledsearch ran `ss init` and got
+      // the hard-coded `.scaledsearch_history` default. After upgrading, that
+      // existing config file is untouched on disk, so loadConfig must keep
+      // returning the old value — otherwise their applied-migration history
+      // would appear lost.
+      const configDir = getConfigDir(tmp);
+      fs.mkdirSync(configDir, { recursive: true });
+      fs.writeFileSync(
+        getConfigPath(tmp),
+        `engine: elasticsearch
+connection:
+  host: http://localhost:9200
+migrations:
+  location: ./migrations
+  naming: V{version}__{description}.yaml
+history:
+  index: .scaledsearch_history
+`,
+        'utf-8',
+      );
+      const config = loadConfig(tmp);
+      expect(config.history.index).toBe('.scaledsearch_history');
     });
 
     it('merges user config over defaults', () => {
