@@ -52,7 +52,7 @@ describeIf('End-to-end migration flow against Elasticsearch', () => {
     const configPath = path.join(tmp, '.scaledsearch/config.yaml');
     const content = fs.readFileSync(configPath, 'utf-8');
     const updated = content.replace(
-      /index:.*\.scaledsearch_history/,
+      /index:.*$/m,
       `index: "${historyIndex}"`,
     );
     fs.writeFileSync(configPath, updated, 'utf-8');
