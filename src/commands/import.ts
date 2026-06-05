@@ -50,32 +50,76 @@ export async function importCommand(): Promise<void> {
   const clusterInfo = await engine.getClusterInfo();
   console.log(chalk.bold(`Connected: ${clusterInfo.engine} ${clusterInfo.version} (${clusterInfo.name})`));
 
-  // Get all user indices (skip system indices starting with .)
-  const indices = await engine.listIndices();
+  // Refuse early if V000 already exists — avoids scanning the cluster only
+  // to refuse to write at the end.
+  const fileName = 'V000__baseline.yaml';
+  const filePath = path.join(migrationsDir, fileName);
+  if (fs.existsSync(filePath)) {
+    console.log(chalk.red(`\n${fileName} already exists. Delete it first if you want to re-import.`));
+    process.exit(1);
+  }
 
-  if (indices.length === 0) {
-    console.log(chalk.yellow('No user indices found. Nothing to import.'));
+  // Get richer index list (name + closed state). Built-in/system filtering
+  // happens in the engine layer.
+  const indices = await engine.listIndicesDetailed();
+  const templates = await engine.listTemplates();
+  const pipelines = await engine.listPipelines();
+
+  if (indices.length === 0 && templates.length === 0 && pipelines.length === 0) {
+    console.log(chalk.yellow('No user indices, templates, or pipelines found. Nothing to import.'));
     return;
   }
 
-  console.log(`\nFound ${indices.length} index(es). Generating baseline migration...\n`);
+  const indexCount = indices.length;
+  const tplCount = templates.length;
+  const pipeCount = pipelines.length;
+  console.log(
+    `\nFound ${indexCount} index(es), ${tplCount} template(s), ${pipeCount} pipeline(s). Generating baseline migration...\n`,
+  );
 
   const operations: MigrationOperation[] = [];
 
-  for (const index of indices.sort()) {
-    process.stdout.write(`  Importing ${index}...`);
+  // Templates first — they may govern auto-created indices below.
+  for (const tplName of templates.sort()) {
+    process.stdout.write(`  Importing template ${tplName}...`);
+    const body = await engine.getTemplate(tplName);
+    operations.push({
+      type: 'put_template',
+      index: '',
+      name: tplName,
+      body,
+    } as MigrationOperation);
+    console.log(chalk.green(` done`));
+  }
 
-    const mappingResult = await engine.getMapping(index);
-    const settingsResult = await engine.getSettings(index);
+  // Then pipelines.
+  for (const pipeName of pipelines.sort()) {
+    process.stdout.write(`  Importing pipeline ${pipeName}...`);
+    const body = await engine.getPipeline(pipeName);
+    operations.push({
+      type: 'put_pipeline',
+      index: '',
+      name: pipeName,
+      body,
+    } as MigrationOperation);
+    console.log(chalk.green(` done`));
+  }
 
-    const mappings = mappingResult[index]?.mappings;
-    const rawSettings = settingsResult[index]?.settings;
+  // Then indices, with their aliases (full filter/routing preserved) and a
+  // trailing close_index op if the index is currently closed.
+  for (const idx of indices.sort((a, b) => a.name.localeCompare(b.name))) {
+    process.stdout.write(`  Importing ${idx.name}...`);
+
+    const mappingResult = await engine.getMapping(idx.name);
+    const settingsResult = await engine.getSettings(idx.name);
+
+    const mappings = mappingResult[idx.name]?.mappings;
+    const rawSettings = settingsResult[idx.name]?.settings;
     const settings = cleanSettings(rawSettings);
 
-    // Create index operation
     const op: MigrationOperation = {
       type: 'create_index',
-      index,
+      index: idx.name,
     } as MigrationOperation;
 
     if (settings) (op as any).settings = settings;
@@ -83,27 +127,36 @@ export async function importCommand(): Promise<void> {
 
     operations.push(op);
 
-    // Check for aliases
-    const aliases = await engine.getAliases(index);
+    // Aliases with all options preserved.
+    const aliases = await engine.getAliasesDetailed(idx.name);
     for (const alias of aliases) {
-      operations.push({
+      const aliasOp: any = {
         type: 'add_alias',
-        index,
-        alias,
+        index: idx.name,
+        alias: alias.name,
+      };
+      if (alias.filter !== undefined) aliasOp.filter = alias.filter;
+      if (alias.routing !== undefined) aliasOp.routing = alias.routing;
+      if (alias.index_routing !== undefined) aliasOp.index_routing = alias.index_routing;
+      if (alias.search_routing !== undefined) aliasOp.search_routing = alias.search_routing;
+      if (alias.is_write_index !== undefined) aliasOp.is_write_index = alias.is_write_index;
+      operations.push(aliasOp as MigrationOperation);
+    }
+
+    // If the index was closed on the live cluster, emit close_index after
+    // creation so replay reproduces the same state.
+    if (idx.closed) {
+      operations.push({
+        type: 'close_index',
+        index: idx.name,
       } as MigrationOperation);
     }
 
-    const aliasInfo = aliases.length > 0 ? ` (aliases: ${aliases.join(', ')})` : '';
-    console.log(chalk.green(` done${aliasInfo}`));
-  }
-
-  // Write baseline migration file
-  const fileName = 'V000__baseline.yaml';
-  const filePath = path.join(migrationsDir, fileName);
-
-  if (fs.existsSync(filePath)) {
-    console.log(chalk.red(`\n${fileName} already exists. Delete it first if you want to re-import.`));
-    process.exit(1);
+    const notes: string[] = [];
+    if (aliases.length > 0) notes.push(`aliases: ${aliases.map(a => a.name).join(', ')}`);
+    if (idx.closed) notes.push('closed');
+    const noteStr = notes.length > 0 ? ` (${notes.join('; ')})` : '';
+    console.log(chalk.green(` done${noteStr}`));
   }
 
   const migration = {
@@ -130,7 +183,12 @@ export async function importCommand(): Promise<void> {
   });
 
   console.log(chalk.green(`\n✓ Baseline imported: ${filePath}`));
-  console.log(`  ${operations.filter(o => o.type === 'create_index').length} index(es), ${operations.filter(o => o.type === 'add_alias').length} alias(es)`);
+  console.log(
+    `  ${operations.filter(o => o.type === 'create_index').length} index(es), ` +
+      `${operations.filter(o => o.type === 'add_alias').length} alias(es), ` +
+      `${operations.filter(o => o.type === 'put_template').length} template(s), ` +
+      `${operations.filter(o => o.type === 'put_pipeline').length} pipeline(s)`,
+  );
   console.log(`  Marked as applied (V000) — won't be re-executed.`);
   console.log(`\nNext: ${chalk.cyan('scaledsearch migrate create "your-first-change"')} to start versioning.`);
 }

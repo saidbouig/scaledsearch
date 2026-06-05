@@ -100,10 +100,17 @@ export async function executeOperation(engine: SearchEngine, op: MigrationOperat
       }
       await executeReindex(engine, op.source, op.dest || op.index, op.script);
       break;
-    case 'add_alias':
+    case 'add_alias': {
       if (!op.alias) throw new Error(`add_alias requires 'alias' field.`);
-      await engine.addAlias(op.index, op.alias);
+      const aliasOpts: any = {};
+      if (op.filter !== undefined) aliasOpts.filter = op.filter;
+      if (op.routing !== undefined) aliasOpts.routing = op.routing;
+      if (op.index_routing !== undefined) aliasOpts.index_routing = op.index_routing;
+      if (op.search_routing !== undefined) aliasOpts.search_routing = op.search_routing;
+      if (op.is_write_index !== undefined) aliasOpts.is_write_index = op.is_write_index;
+      await engine.addAlias(op.index, op.alias, Object.getOwnPropertyNames(aliasOpts).length ? aliasOpts : undefined);
       break;
+    }
     case 'remove_alias':
       if (!op.alias) throw new Error(`remove_alias requires 'alias' field.`);
       await engine.removeAlias(op.index, op.alias);
