@@ -17,6 +17,13 @@ export interface MigrationOperation {
   from?: string;
   to?: string;
   name?: string;
+  // Optional alias attachment options (add_alias only). Preserved on import
+  // so baseline migrations round-trip filter/routing/is_write_index.
+  filter?: any;
+  routing?: string;
+  index_routing?: string;
+  search_routing?: string;
+  is_write_index?: boolean;
 }
 
 export interface MigrationFile {

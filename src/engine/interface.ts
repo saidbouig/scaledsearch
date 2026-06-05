@@ -5,6 +5,24 @@ export interface ClusterInfo {
   distribution?: string;
 }
 
+// Full alias attachment shape — captures filter/routing so import can
+// round-trip aliases without silent data loss.
+export interface AliasInfo {
+  name: string;
+  filter?: any;
+  routing?: string;
+  index_routing?: string;
+  search_routing?: string;
+  is_write_index?: boolean;
+}
+
+// listIndices entry — name plus whether the index is currently closed.
+// Used by import to emit a `close_index` op when needed.
+export interface IndexInfo {
+  name: string;
+  closed: boolean;
+}
+
 export interface SearchEngine {
   connect(): Promise<void>;
   getClusterInfo(): Promise<ClusterInfo>;
@@ -25,7 +43,7 @@ export interface SearchEngine {
   getTask(taskId: string): Promise<{ completed: boolean; total?: number; created?: number; error?: any }>;
   closeIndex(index: string): Promise<void>;
   openIndex(index: string): Promise<void>;
-  addAlias(index: string, alias: string): Promise<void>;
+  addAlias(index: string, alias: string, options?: { filter?: any; routing?: string; index_routing?: string; search_routing?: string; is_write_index?: boolean }): Promise<void>;
   removeAlias(index: string, alias: string): Promise<void>;
   swapAlias(alias: string, fromIndex: string, toIndex: string): Promise<void>;
   putTemplate(name: string, body: any): Promise<void>;
@@ -33,6 +51,16 @@ export interface SearchEngine {
   putPipeline(name: string, body: any): Promise<void>;
   deletePipeline(name: string): Promise<void>;
   listIndices(): Promise<string[]>;
+  // Richer listing for import — same filters as listIndices(), plus closed state.
+  listIndicesDetailed(): Promise<IndexInfo[]>;
   getAliases(index: string): Promise<string[]>;
+  // Richer alias info for import — preserves filter/routing/is_write_index.
+  getAliasesDetailed(index: string): Promise<AliasInfo[]>;
+  // Lists composable index templates managed by the user (built-ins filtered).
+  listTemplates(): Promise<string[]>;
+  getTemplate(name: string): Promise<any>;
+  // Lists ingest pipelines managed by the user (built-ins filtered).
+  listPipelines(): Promise<string[]>;
+  getPipeline(name: string): Promise<any>;
   apiCall(method: string, path: string, body?: any): Promise<any>;
 }

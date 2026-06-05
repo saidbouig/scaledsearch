@@ -1,4 +1,5 @@
-import { SearchEngine, ClusterInfo } from './interface';
+import { SearchEngine, ClusterInfo, AliasInfo, IndexInfo } from './interface';
+import { isBuiltinIndex, isBuiltinPipeline, isBuiltinTemplate } from './builtin-filters';
 
 /**
  * OpenSearch adapter using raw HTTP calls.
@@ -153,10 +154,18 @@ export class OpenSearchEngine implements SearchEngine {
     await this.request('POST', `/${index}/_open`);
   }
 
-  async addAlias(index: string, alias: string): Promise<void> {
-    await this.request('POST', '/_aliases', {
-      actions: [{ add: { index, alias } }],
-    });
+  async addAlias(
+    index: string,
+    alias: string,
+    options?: { filter?: any; routing?: string; index_routing?: string; search_routing?: string; is_write_index?: boolean },
+  ): Promise<void> {
+    const add: any = { index, alias };
+    if (options?.filter !== undefined) add.filter = options.filter;
+    if (options?.routing !== undefined) add.routing = options.routing;
+    if (options?.index_routing !== undefined) add.index_routing = options.index_routing;
+    if (options?.search_routing !== undefined) add.search_routing = options.search_routing;
+    if (options?.is_write_index !== undefined) add.is_write_index = options.is_write_index;
+    await this.request('POST', '/_aliases', { actions: [{ add }] });
   }
 
   async removeAlias(index: string, alias: string): Promise<void> {
@@ -194,7 +203,15 @@ export class OpenSearchEngine implements SearchEngine {
     const result = await this.request('GET', '/_cat/indices?format=json');
     return (result as any[])
       .map((i: any) => i.index as string)
-      .filter((name: string) => !name.startsWith('.'));
+      .filter((name: string) => !isBuiltinIndex(name));
+  }
+
+  async listIndicesDetailed(): Promise<IndexInfo[]> {
+    // expand_wildcards=all surfaces closed indices in _cat/indices.
+    const result = await this.request('GET', '/_cat/indices?format=json&expand_wildcards=all');
+    return (result as any[])
+      .map((i: any) => ({ name: i.index as string, closed: i.status === 'close' }))
+      .filter(i => !isBuiltinIndex(i.name));
   }
 
   async getAliases(index: string): Promise<string[]> {
@@ -202,6 +219,55 @@ export class OpenSearchEngine implements SearchEngine {
     const entry = result[index];
     if (!entry || !entry.aliases) return [];
     return Object.getOwnPropertyNames(entry.aliases);
+  }
+
+  async getAliasesDetailed(index: string): Promise<AliasInfo[]> {
+    const result = await this.request('GET', `/${index}/_alias`);
+    const entry = result[index];
+    if (!entry || !entry.aliases) return [];
+    return Object.entries(entry.aliases as Record<string, any>).map(([name, body]) => {
+      const info: AliasInfo = { name };
+      if (body?.filter !== undefined) info.filter = body.filter;
+      if (body?.routing !== undefined) info.routing = body.routing;
+      if (body?.index_routing !== undefined) info.index_routing = body.index_routing;
+      if (body?.search_routing !== undefined) info.search_routing = body.search_routing;
+      if (body?.is_write_index !== undefined) info.is_write_index = body.is_write_index;
+      return info;
+    });
+  }
+
+  async listTemplates(): Promise<string[]> {
+    let result: any;
+    try {
+      result = await this.request('GET', '/_index_template');
+    } catch {
+      return [];
+    }
+    const templates = (result?.index_templates ?? []) as Array<{ name: string }>;
+    return templates
+      .map(t => t.name)
+      .filter(name => !isBuiltinTemplate(name));
+  }
+
+  async getTemplate(name: string): Promise<any> {
+    const result: any = await this.request('GET', `/_index_template/${name}`);
+    const entry = (result?.index_templates ?? [])[0];
+    return entry?.index_template ?? {};
+  }
+
+  async listPipelines(): Promise<string[]> {
+    let result: any;
+    try {
+      result = await this.request('GET', '/_ingest/pipeline');
+    } catch {
+      return [];
+    }
+    return Object.getOwnPropertyNames(result ?? {}).filter(name => !isBuiltinPipeline(name));
+  }
+
+  async getPipeline(name: string): Promise<any> {
+    const result: any = await this.request('GET', `/_ingest/pipeline/${name}`);
+    return result?.[name] ?? {};
   }
 
   async apiCall(method: string, path: string, body?: any): Promise<any> {
