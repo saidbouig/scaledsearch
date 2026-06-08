@@ -14,7 +14,17 @@ export async function statusCommand(): Promise<void> {
 
   const config = loadConfig(cwd);
   const migrationsDir = getMigrationsDir(cwd);
-  const migrations = loadMigrations(migrationsDir);
+
+  // Loading migrations can throw on malformed YAML, missing required fields,
+  // etc. The parser's error message already names the offending file —
+  // surface it cleanly instead of letting a raw stack trace escape.
+  let migrations;
+  try {
+    migrations = loadMigrations(migrationsDir);
+  } catch (err: any) {
+    console.error(chalk.red(`status failed: ${err.message ?? String(err)}`));
+    process.exit(1);
+  }
 
   if (migrations.length === 0) {
     console.log(chalk.yellow('No migration files found.') + ` Create one with ${chalk.cyan('scaledsearch migrate create <name>')}`);
@@ -41,6 +51,13 @@ export async function statusCommand(): Promise<void> {
     allEntries.filter(e => e.status === 'failed').map(e => e.version),
   );
 
+  // Orphans: versions recorded in history (success OR failed) but no
+  // matching file on disk. Surfaces the case where someone deleted an
+  // applied migration file, which would otherwise silently inflate the
+  // Applied count without contributing a row to the display.
+  const onDiskVersions = new Set(migrations.map(m => m.version));
+  const orphans = allEntries.filter(e => !onDiskVersions.has(e.version));
+
   console.log(chalk.bold('Migration Status'));
   if (connected) {
     console.log(chalk.green(`Connected to ${config.connection.host}`));
@@ -61,14 +78,34 @@ export async function statusCommand(): Promise<void> {
     console.log(`  V${String(m.version).padStart(3, '0')} | ${status} | ${m.description}`);
   }
 
+  // Render orphans as a distinct block so the user sees the inconsistency
+  // and the count line below stays internally consistent.
+  if (orphans.length > 0) {
+    console.log('');
+    console.log(chalk.yellow.bold('Orphan history records (applied on cluster but no file on disk):'));
+    for (const o of orphans.sort((a, b) => a.version - b.version)) {
+      const tag = o.status === 'failed' ? chalk.red('failed') : chalk.green('applied');
+      console.log(
+        `  V${String(o.version).padStart(3, '0')} | ${tag} | ${o.description} ${chalk.yellow('(file missing)')}`,
+      );
+    }
+  }
+
+  // Count only on-disk migrations so the totals reconcile:
+  //   Total = files on disk
+  //   Applied + Failed + Pending sum to Total
+  //   Orphans are reported separately (not in Total/Applied/Pending).
+  const appliedOnDisk = migrations.filter(m => appliedVersions.has(m.version)).length;
+  const failedOnDisk = migrations.filter(m => failedVersions.has(m.version)).length;
   const pending = migrations.filter(
     m => !appliedVersions.has(m.version) && !failedVersions.has(m.version),
   );
-  const failedCount = migrations.filter(m => failedVersions.has(m.version)).length;
+
   console.log('');
-  const parts = [`Total: ${migrations.length}`, `Applied: ${applied.length}`];
-  if (failedCount > 0) parts.push(`Failed: ${failedCount}`);
+  const parts = [`Total: ${migrations.length}`, `Applied: ${appliedOnDisk}`];
+  if (failedOnDisk > 0) parts.push(`Failed: ${failedOnDisk}`);
   parts.push(`Pending: ${pending.length}`);
+  if (orphans.length > 0) parts.push(chalk.yellow(`Orphans: ${orphans.length}`));
   console.log(parts.join(' | '));
 
   if (pending.length > 0) {
