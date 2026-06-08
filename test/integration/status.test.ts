@@ -140,3 +140,101 @@ describeIf('migrate status: shows applied vs pending', () => {
     setHost(tmp, ES_HOST);
   });
 });
+
+describe('migrate status: malformed migration file', () => {
+  it('exits with a friendly error naming the file, not a Node stack trace', () => {
+    const tmp = makeTmpDir('scaledsearch-status-badyaml-');
+    try {
+      runCli(tmp, 'migrate init');
+      // Plant a valid V001 and a broken V002.
+      fs.writeFileSync(
+        path.join(tmp, 'migrations', 'V001__ok.yaml'),
+        'description: ok\noperations:\n  - type: create_index\n    index: a\n',
+        'utf-8',
+      );
+      fs.writeFileSync(
+        path.join(tmp, 'migrations', 'V002__broken.yaml'),
+        `description: broken
+operations:
+  - type: create_index
+  bad indent: oops
+    invalid: : yaml :::
+`,
+        'utf-8',
+      );
+
+      const result = runCli(tmp, 'migrate status');
+      expect(result.status).not.toBe(0);
+      // No raw Node stack trace
+      expect(result.stdout).not.toContain('at Module.');
+      expect(result.stdout).not.toContain('node:internal');
+      // The error names the offending file
+      expect(result.stdout).toMatch(/V002__broken\.yaml/);
+      // Friendly prefix (added by status.ts)
+      expect(result.stdout.toLowerCase()).toContain('status failed');
+    } finally {
+      cleanupTmpDir(tmp);
+    }
+  });
+});
+
+describeIf('migrate status: orphan history records', () => {
+  const engine = esEngine();
+  let tmp: string;
+  let historyIndex: string;
+  const idxA = uniqueIndexName('ss_orph_a');
+  const idxB = uniqueIndexName('ss_orph_b');
+
+  beforeAll(async () => {
+    tmp = makeTmpDir('scaledsearch-status-orphan-');
+    historyIndex = `.scaledsearch_history_${Date.now()}_orph`;
+    await cleanupIndex(engine, idxA);
+    await cleanupIndex(engine, idxB);
+    await cleanupIndex(engine, historyIndex);
+    runCli(tmp, 'migrate init');
+    setHistoryIndex(tmp, historyIndex);
+
+    // V001 and V002 — apply both
+    fs.writeFileSync(
+      path.join(tmp, 'migrations', 'V001__a.yaml'),
+      `description: a\noperations:\n  - type: create_index\n    index: ${idxA}\n`,
+      'utf-8',
+    );
+    fs.writeFileSync(
+      path.join(tmp, 'migrations', 'V002__b.yaml'),
+      `description: b\noperations:\n  - type: create_index\n    index: ${idxB}\n`,
+      'utf-8',
+    );
+    runCli(tmp, 'migrate apply');
+
+    // Now simulate the orphan: V002 was applied but the file is gone (force
+    // push removed it, accidental delete, etc.)
+    fs.unlinkSync(path.join(tmp, 'migrations', 'V002__b.yaml'));
+  });
+
+  afterAll(async () => {
+    await cleanupIndex(engine, idxA);
+    await cleanupIndex(engine, idxB);
+    await cleanupIndex(engine, historyIndex);
+    cleanupTmpDir(tmp);
+  });
+
+  it('surfaces orphans as a distinct block in the output', () => {
+    const result = runCli(tmp, 'migrate status');
+    expect(result.status).toBe(0);
+    // The orphan label appears
+    expect(result.stdout.toLowerCase()).toContain('orphan');
+    // V002 shown with "(file missing)" note
+    expect(result.stdout).toMatch(/V002.*file missing/);
+  });
+
+  it('counts reconcile: Total = Applied + Failed + Pending, orphans separate', () => {
+    const result = runCli(tmp, 'migrate status');
+    // V001 on disk and applied → Total: 1, Applied: 1, Pending: 0
+    // V002 orphan → Orphans: 1, NOT in the Applied count
+    expect(result.stdout).toMatch(/Total:\s*1/);
+    expect(result.stdout).toMatch(/Applied:\s*1/);
+    expect(result.stdout).toMatch(/Pending:\s*0/);
+    expect(result.stdout).toMatch(/Orphans:\s*1/);
+  });
+});
