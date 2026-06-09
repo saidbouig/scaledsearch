@@ -14,7 +14,17 @@ export async function diffCommand(): Promise<void> {
 
   const config = loadConfig(cwd);
   const migrationsDir = getMigrationsDir(cwd);
-  const migrations = loadMigrations(migrationsDir);
+
+  // Loading migrations can throw on malformed YAML, missing required fields,
+  // etc. Same friendly-error treatment as status — the parser already names
+  // the offending file in the thrown error.
+  let migrations;
+  try {
+    migrations = loadMigrations(migrationsDir);
+  } catch (err: any) {
+    console.error(chalk.red(`diff failed: ${err.message ?? String(err)}`));
+    process.exit(1);
+  }
 
   if (migrations.length === 0) {
     console.log(chalk.yellow('No migration files found.'));
@@ -50,7 +60,26 @@ export async function diffCommand(): Promise<void> {
         console.log(`    → ${chalk.yellow('SWAP ALIAS')} "${op.alias}" ${op.from} → ${op.to}`);
       } else if (op.type === 'add_alias' || op.type === 'remove_alias') {
         const action = op.type === 'add_alias' ? 'ADD ALIAS' : 'REMOVE ALIAS';
-        console.log(`    → ${chalk.yellow(action)} "${op.alias}" on ${op.index}`);
+        // For add_alias, surface the optional attachment options so users
+        // running `diff` before `apply` see the full semantic effect.
+        const opts: string[] = [];
+        if (op.type === 'add_alias') {
+          if (op.filter !== undefined) opts.push('filter');
+          if (op.routing !== undefined) opts.push(`routing=${op.routing}`);
+          if (op.index_routing !== undefined) opts.push(`index_routing=${op.index_routing}`);
+          if (op.search_routing !== undefined) opts.push(`search_routing=${op.search_routing}`);
+          if (op.is_write_index !== undefined) opts.push(`is_write_index=${op.is_write_index}`);
+        }
+        const suffix = opts.length > 0 ? chalk.gray(` (${opts.join(', ')})`) : '';
+        console.log(`    → ${chalk.yellow(action)} "${op.alias}" on ${op.index}${suffix}`);
+        // Show the actual filter expression on a sub-line so reviewers can
+        // verify it matches their intent — printing it inline above would
+        // make the line unreadable for non-trivial filters.
+        if (op.type === 'add_alias' && op.filter !== undefined) {
+          const filterStr = JSON.stringify(op.filter);
+          const shown = filterStr.length > 80 ? filterStr.slice(0, 77) + '...' : filterStr;
+          console.log(`      ${chalk.gray('filter:')} ${shown}`);
+        }
       } else if (op.type === 'put_template' || op.type === 'delete_template') {
         const action = op.type === 'put_template' ? 'PUT TEMPLATE' : 'DELETE TEMPLATE';
         console.log(`    → ${chalk.yellow(action)} ${op.name}`);
@@ -60,7 +89,12 @@ export async function diffCommand(): Promise<void> {
       } else {
         const action = op.type.replace(/_/g, ' ').toUpperCase();
         const target = op.index || `${op.source} → ${op.dest}`;
-        console.log(`    → ${chalk.yellow(action)} ${target}`);
+        // Reindex can carry a Painless transform script — flag it so the
+        // preview doesn't silently hide that a script will run on every doc.
+        const scriptSuffix = op.type === 'reindex' && op.script
+          ? chalk.gray(' (with script)')
+          : '';
+        console.log(`    → ${chalk.yellow(action)} ${target}${scriptSuffix}`);
       }
 
       if (op.body?.properties || op.mappings?.properties) {
