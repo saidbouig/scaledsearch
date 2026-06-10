@@ -6,6 +6,29 @@ import { createEngine } from '../engine/factory';
 import { validateMigrations } from '../migration/validator';
 import { executeOperation } from '../migration/executor';
 
+// Parses --target into a version number or throws a clean error.
+//   - Strips an optional leading "V" or "v"
+//   - Requires a positive integer (rejects "abc", "V-1", "1.5", etc.)
+//   - Requires the version to exist on disk (rejects "V999" when max is V3)
+// Returns the numeric version when valid.
+export function parseTarget(raw: string, migrations: MigrationFile[]): number {
+  const cleaned = raw.replace(/^[Vv]/, '');
+  if (!/^\d+$/.test(cleaned)) {
+    throw new Error(
+      `Invalid --target value '${raw}'. Expected a version number like V003 or 3.`,
+    );
+  }
+  const targetVersion = parseInt(cleaned, 10);
+  const onDisk = new Set(migrations.map(m => m.version));
+  if (!onDisk.has(targetVersion)) {
+    const available = migrations.map(m => `V${String(m.version).padStart(3, '0')}`).join(', ');
+    throw new Error(
+      `--target V${String(targetVersion).padStart(3, '0')} does not match any migration on disk. Available: ${available}`,
+    );
+  }
+  return targetVersion;
+}
+
 export async function migrateCommand(options: { dryRun?: boolean; target?: string }): Promise<void> {
   const cwd = process.cwd();
 
@@ -16,16 +39,39 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
 
   const config = loadConfig(cwd);
   const migrationsDir = getMigrationsDir(cwd);
-  const migrations = loadMigrations(migrationsDir);
+
+  // Loading migrations can throw on malformed YAML, missing required fields,
+  // etc. Same friendly-error pattern as status/diff — the parser already
+  // names the offending file in the thrown error.
+  let migrations: MigrationFile[];
+  try {
+    migrations = loadMigrations(migrationsDir);
+  } catch (err: any) {
+    console.error(chalk.red(`apply failed: ${err.message ?? String(err)}`));
+    process.exit(1);
+  }
 
   if (migrations.length === 0) {
     console.log(chalk.yellow('No migration files found.'));
     return;
   }
 
+  // Validate --target up front so both dry-run and real apply give the same
+  // error for bad input. Done before we even attempt to connect.
+  let targetVersion: number | undefined;
+  if (options.target) {
+    try {
+      targetVersion = parseTarget(options.target, migrations);
+    } catch (err: any) {
+      console.error(chalk.red(err.message ?? String(err)));
+      process.exit(1);
+    }
+  }
+
   // Dry-run: try to connect for accurate pending list, fallback to showing all
   if (options.dryRun) {
     let pending = migrations;
+    let appliedMaxVersion = -1;
     try {
       const engine = await createEngine(config);
       await engine.connect();
@@ -33,8 +79,24 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
       const applied = await history.getApplied();
       const appliedVersions = new Set(applied.map(a => a.version));
       pending = migrations.filter(m => !appliedVersions.has(m.version));
+      if (applied.length > 0) {
+        appliedMaxVersion = Math.max(...applied.map(a => a.version));
+      }
     } catch {
       console.log(chalk.yellow('(offline — showing all migrations)\n'));
+    }
+    // Honor --target in dry-run too so the preview matches what a real
+    // apply with the same flags would actually do.
+    if (targetVersion !== undefined) {
+      if (targetVersion < appliedMaxVersion) {
+        console.log(
+          chalk.yellow(
+            `\n⚠ --target V${String(targetVersion).padStart(3, '0')} is below the highest applied version V${String(appliedMaxVersion).padStart(3, '0')}. ` +
+              `apply does not undo migrations — use 'scaledsearch migrate rollback' to revert.`,
+          ),
+        );
+      }
+      pending = pending.filter(m => m.version <= targetVersion);
     }
     if (pending.length === 0) {
       console.log(chalk.green('All migrations already applied.'));
@@ -90,8 +152,24 @@ export async function migrateCommand(options: { dryRun?: boolean; target?: strin
   const appliedVersions = new Set(applied.map(a => a.version));
   let pending = migrations.filter(m => !appliedVersions.has(m.version));
 
-  if (options.target) {
-    const targetVersion = parseInt(options.target.replace(/^V/i, ''), 10);
+  if (targetVersion !== undefined) {
+    // If the target is below the highest already-applied version, the user
+    // is asking for a no-op that probably isn't what they want. apply only
+    // moves forward — surface this explicitly instead of "All migrations
+    // already applied."
+    const appliedMaxVersion = applied.length > 0
+      ? Math.max(...applied.map(a => a.version))
+      : -1;
+    if (targetVersion < appliedMaxVersion) {
+      await history.releaseLock();
+      console.log(
+        chalk.yellow(
+          `\n--target V${String(targetVersion).padStart(3, '0')} is below the highest applied version V${String(appliedMaxVersion).padStart(3, '0')}. ` +
+            `apply does not undo migrations — use 'scaledsearch migrate rollback' to revert.`,
+        ),
+      );
+      return;
+    }
     pending = pending.filter(m => m.version <= targetVersion);
   }
 
