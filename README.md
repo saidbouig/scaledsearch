@@ -81,7 +81,7 @@ scaledsearch migrate apply
 | `scaledsearch migrate apply` | Apply pending migrations to cluster |
 | `scaledsearch migrate apply --dry-run` | Preview without applying (works offline) |
 | `scaledsearch migrate diff` | Show detailed pending changes |
-| `scaledsearch migrate validate` | Check migration file integrity |
+| `scaledsearch migrate validate` | Validate migration files and simulate their end-state (offline) |
 | `scaledsearch migrate rollback` | Undo last migration |
 | `scaledsearch migrate import` | Import existing cluster as V000 baseline |
 

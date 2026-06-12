@@ -3,6 +3,55 @@
 All notable changes to ScaledSearch are documented here.
 This project follows [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-06-12
+
+### Added
+- `migrate validate` now simulates the end-state from your migration files
+  (offline), surfacing wildcard and reindex-destination resolution — not just
+  file integrity. ([#12](https://github.com/saidbouig/scaledsearch/pull/12))
+- `migrate import` captures more of the cluster: index templates, ingest
+  pipelines, alias options, and closed-index state.
+  ([#14](https://github.com/saidbouig/scaledsearch/pull/14))
+- `migrate import` automatically excludes built-in/system-owned templates,
+  pipelines, and indices (APM, Fleet, ML, ILM/SLM history, leading-dot system
+  indices, and OpenSearch plugin state) so the generated baseline doesn't fight
+  the cluster on replay. ([#14](https://github.com/saidbouig/scaledsearch/pull/14))
+
+### Fixed
+- Failed migrations are no longer recorded as applied.
+  ([#9](https://github.com/saidbouig/scaledsearch/pull/9))
+- `migrate init` now derives a per-project history index name, so multiple
+  projects on one cluster no longer share history.
+  ([#10](https://github.com/saidbouig/scaledsearch/pull/10))
+- History index hashing resolves the real path of the cwd first, fixing
+  symlink, long-name, and upgrade-path edge cases.
+  ([#11](https://github.com/saidbouig/scaledsearch/pull/11))
+- `migrate init` self-heals partial setups and reports filesystem errors
+  with friendly messages. ([#13](https://github.com/saidbouig/scaledsearch/pull/13))
+- `status`, `diff`, and `apply` handle corrupted migration files gracefully
+  and surface orphaned history entries instead of crashing.
+  ([#15](https://github.com/saidbouig/scaledsearch/pull/15),
+  [#16](https://github.com/saidbouig/scaledsearch/pull/16),
+  [#17](https://github.com/saidbouig/scaledsearch/pull/17))
+- `apply` validates `--target`, honors it in dry-run, and reports friendly
+  errors on corrupt files. ([#17](https://github.com/saidbouig/scaledsearch/pull/17))
+
+## [1.0.5] - 2026-05-19
+
+### Fixed
+- CLI version is now read from `package.json` instead of a hardcoded string,
+  so `--version` always matches the published release.
+
+## [1.0.4] - 2026-05-19
+
+### Fixed
+- Race in stale-lock recovery in `acquireLock`.
+  ([#8](https://github.com/saidbouig/scaledsearch/pull/8))
+
+### Added
+- Expanded test coverage: OpenSearch coverage, engine factory + status tests,
+  import/diff/engine-extras, history, rollback, and migrate-apply edge cases.
+
 ## [1.0.3] - 2026-05-19
 
 ### Fixed
