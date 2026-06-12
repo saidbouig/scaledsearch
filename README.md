@@ -20,6 +20,14 @@ scaledsearch migrate apply    # full name
 ss migrate apply              # shorthand
 ```
 
+## Documentation
+
+Full docs live in [`docs/`](docs/README.md):
+
+- [Getting started](docs/getting-started.md) · [Commands](docs/commands.md) · [Migration file format](docs/migration-files.md)
+- [Operation types](docs/operations.md) · [Configuration](docs/configuration.md) · [Engines](docs/engines.md)
+- Guides: [Zero-downtime migrations](docs/guides/zero-downtime.md) · [Importing a cluster](docs/guides/importing.md) · [Validating offline](docs/guides/validation.md)
+
 ## The Toolkit
 
 | Tool | Description | Status |
