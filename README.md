@@ -1,9 +1,17 @@
-# ScaledSearch
+<p align="center">
+  <img src="assets/logo.png" alt="ScaledSearch" width="120" height="120">
+</p>
 
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![npm version](https://img.shields.io/npm/v/scaledsearch.svg)](https://www.npmjs.com/package/scaledsearch)
+<h1 align="center">ScaledSearch</h1>
 
-**The Search Engineer's Toolkit** — Open source CLI tools for Elasticsearch and OpenSearch.
+<p align="center"><strong>The Search Engineer's Toolkit</strong> — open source CLI tools for Elasticsearch and OpenSearch.</p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
+  <a href="https://www.npmjs.com/package/scaledsearch"><img src="https://img.shields.io/npm/v/scaledsearch.svg" alt="npm version"></a>
+</p>
+
+---
 
 Migrate, audit, benchmark, monitor, tune, and optimize your search infrastructure. One install, all tools.
 
