@@ -1,24 +1,18 @@
 <svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
-  <!-- H5 refined: one index hex segmented into 6 shards; active shard = mauve wedge. -->
+  <!-- Simplified hex mark (dark): outer hex + mauve active-shard wedge + 3 spokes. -->
   <rect width="256" height="256" rx="56" fill="#09090B"/>
 
-  <!-- active shard wedge (drawn first, under the spokes) -->
+  <!-- active shard wedge (top → upper-right) -->
   <path d="M128 128 L128 44 L200 86 Z" fill="#B7ABB0"/>
 
-  <!-- segmentation spokes (white), capped round at the rim -->
-  <g stroke="#FAFAFA" stroke-width="7" stroke-linecap="round">
+  <!-- 3 spokes: the two wedge edges + the bottom -->
+  <g stroke="#FAFAFA" stroke-width="11" stroke-linecap="round">
     <line x1="128" y1="128" x2="128" y2="44"/>
     <line x1="128" y1="128" x2="200" y2="86"/>
-    <line x1="128" y1="128" x2="200" y2="170"/>
     <line x1="128" y1="128" x2="128" y2="212"/>
-    <line x1="128" y1="128" x2="56" y2="170"/>
-    <line x1="128" y1="128" x2="56" y2="86"/>
   </g>
 
-  <!-- outer hex on top so the silhouette stays crisp -->
+  <!-- outer hex -->
   <polygon points="128,44 200,86 200,170 128,212 56,170 56,86"
-           fill="none" stroke="#FAFAFA" stroke-width="10" stroke-linejoin="round"/>
-
-  <!-- center node dot -->
-  <circle cx="128" cy="128" r="8" fill="#FAFAFA"/>
+           fill="none" stroke="#FAFAFA" stroke-width="13" stroke-linejoin="round"/>
 </svg>
