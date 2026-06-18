@@ -2,6 +2,9 @@ node_modules/
 dist/
 .scaledsearch/
 migrations/
+# …but DO track example migrations shipped with the repo.
+!examples/**/migrations/
+!examples/**/migrations/**
 *.js
 *.d.ts
 *.js.map
