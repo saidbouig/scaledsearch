@@ -3,6 +3,16 @@
 All notable changes to ScaledSearch are documented here.
 This project follows [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- `reindex` operations accept `op_type`, `conflicts`, `version_type`, and `query`,
+  enabling a delta-safe zero-downtime reindex while clients are still writing
+  (backfill + delta catch-up) directly in YAML. Omitting these reproduces the
+  previous behavior. The [zero-downtime guide](docs/guides/zero-downtime.md)
+  documents the full live-writes sequence, including the `_refresh`-before-swap
+  step required under a high `refresh_interval`.
+
 ## [1.1.0] - 2026-06-12
 
 ### Added
