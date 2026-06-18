@@ -1,5 +1,23 @@
-import { SearchEngine, ClusterInfo, AliasInfo, IndexInfo } from './interface';
+import { SearchEngine, ClusterInfo, AliasInfo, IndexInfo, ReindexOptions } from './interface';
 import { isBuiltinIndex, isBuiltinPipeline, isBuiltinTemplate } from './builtin-filters';
+
+// Build a _reindex request body from source/dest plus optional tuning.
+// OpenSearch's reindex API mirrors Elasticsearch's: op_type/version_type on
+// `dest`, conflicts top-level, query on `source`. Kept in sync with the ES
+// adapter's buildReindexBody.
+function buildReindexBody(source: string, dest: string, script?: string, options?: ReindexOptions): any {
+  const src: any = { index: source };
+  if (options?.query !== undefined) src.query = options.query;
+
+  const dst: any = { index: dest };
+  if (options?.opType !== undefined) dst.op_type = options.opType;
+  if (options?.versionType !== undefined) dst.version_type = options.versionType;
+
+  const body: any = { source: src, dest: dst };
+  if (options?.conflicts !== undefined) body.conflicts = options.conflicts;
+  if (script) body.script = { source: script };
+  return body;
+}
 
 /**
  * OpenSearch adapter using raw HTTP calls.
@@ -122,15 +140,12 @@ export class OpenSearchEngine implements SearchEngine {
     return await this.request('POST', `/${index}/_search`, query);
   }
 
-  async reindex(source: string, dest: string, script?: string): Promise<void> {
-    const body: any = { source: { index: source }, dest: { index: dest } };
-    if (script) body.script = { source: script };
-    await this.request('POST', '/_reindex', body);
+  async reindex(source: string, dest: string, script?: string, options?: ReindexOptions): Promise<void> {
+    await this.request('POST', '/_reindex', buildReindexBody(source, dest, script, options));
   }
 
-  async reindexAsync(source: string, dest: string, script?: string): Promise<string> {
-    const body: any = { source: { index: source }, dest: { index: dest } };
-    if (script) body.script = { source: script };
+  async reindexAsync(source: string, dest: string, script?: string, options?: ReindexOptions): Promise<string> {
+    const body = buildReindexBody(source, dest, script, options);
     const result = await this.request('POST', '/_reindex?wait_for_completion=false', body);
     return result.task;
   }

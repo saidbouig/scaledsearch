@@ -132,6 +132,10 @@ rollback:
 
 ### Zero-Downtime Migration (Alias Swap)
 
+> Most schema changes don't need a reindex — `put_mapping` adds fields in place.
+> Reindex is for changes you *can't* make in place: field **type** changes, **shard
+> count** changes, or version/cluster migrations.
+
 ```yaml
 description: "Migrate to products_v2 with zero downtime"
 operations:
@@ -158,6 +162,13 @@ rollback:
     from: products_v2
     to: products_v1
 ```
+
+> ⚠️ This simple form is safe only for a **read-only / quiet** index — a plain
+> `reindex` copies a point-in-time snapshot, so any write that arrives during the
+> copy is lost. For a **live index**, use `reindex` with `op_type: create` +
+> `conflicts: proceed` plus a delta catch-up pass and `_refresh` before the swap.
+> See the [zero-downtime guide](docs/guides/zero-downtime.md) for the full
+> live-writes sequence.
 
 ### Alias Operations
 
@@ -231,7 +242,7 @@ No configuration needed — all reindex operations automatically use async mode 
 |----------|-----------|
 | Index | `create_index`, `delete_index`, `close_index`, `open_index` |
 | Schema | `put_mapping`, `put_settings` |
-| Data | `reindex` (async with progress) |
+| Data | `reindex` (async with progress; supports `op_type`, `conflicts`, `version_type`, `query` for live-write reindex) |
 | Alias | `add_alias`, `remove_alias`, `swap_alias` |
 | Template | `put_template`, `delete_template` |
 | Pipeline | `put_pipeline`, `delete_pipeline` |

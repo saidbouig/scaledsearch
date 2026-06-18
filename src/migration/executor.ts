@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { SearchEngine } from '../engine/interface';
+import { SearchEngine, ReindexOptions } from '../engine/interface';
 import { MigrationOperation } from './parser';
 
 const VALID_TYPES = [
@@ -21,9 +21,9 @@ function formatProgress(created: number, total: number): string {
   return `${pct}% (${created.toLocaleString()}/${total.toLocaleString()} docs)`;
 }
 
-async function executeReindex(engine: SearchEngine, source: string, dest: string, script?: string): Promise<void> {
+async function executeReindex(engine: SearchEngine, source: string, dest: string, script?: string, options?: ReindexOptions): Promise<void> {
   // Start async reindex
-  const taskId = await engine.reindexAsync(source, dest, script);
+  const taskId = await engine.reindexAsync(source, dest, script, options);
 
   // Poll for completion
   let lastLog = 0;
@@ -94,12 +94,21 @@ export async function executeOperation(engine: SearchEngine, op: MigrationOperat
     case 'open_index':
       await engine.openIndex(op.index);
       break;
-    case 'reindex':
+    case 'reindex': {
       if (!op.source) {
         throw new Error(`Reindex operation missing 'source' field.`);
       }
-      await executeReindex(engine, op.source, op.dest || op.index, op.script);
+      // Map YAML field names (snake_case) onto the ReindexOptions shape.
+      // Only set keys the migration actually specified so omitted fields
+      // fall back to ES defaults rather than being sent as undefined.
+      const reindexOpts: ReindexOptions = {};
+      if (op.op_type !== undefined) reindexOpts.opType = op.op_type;
+      if (op.conflicts !== undefined) reindexOpts.conflicts = op.conflicts;
+      if (op.version_type !== undefined) reindexOpts.versionType = op.version_type;
+      if (op.query !== undefined) reindexOpts.query = op.query;
+      await executeReindex(engine, op.source, op.dest || op.index, op.script, reindexOpts);
       break;
+    }
     case 'add_alias': {
       if (!op.alias) throw new Error(`add_alias requires 'alias' field.`);
       const aliasOpts: any = {};

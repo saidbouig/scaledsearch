@@ -1,6 +1,24 @@
 import { Client } from '@elastic/elasticsearch';
-import { SearchEngine, ClusterInfo, AliasInfo, IndexInfo } from './interface';
+import { SearchEngine, ClusterInfo, AliasInfo, IndexInfo, ReindexOptions } from './interface';
 import { isBuiltinIndex, isBuiltinPipeline, isBuiltinTemplate } from './builtin-filters';
+
+// Build a _reindex request body from source/dest plus optional tuning.
+// Shared by reindex() and reindexAsync() so both honor op_type/conflicts/
+// version_type/query identically. version_type and op_type live on `dest`;
+// conflicts is top-level; query filters `source`.
+function buildReindexBody(source: string, dest: string, script?: string, options?: ReindexOptions): any {
+  const src: any = { index: source };
+  if (options?.query !== undefined) src.query = options.query;
+
+  const dst: any = { index: dest };
+  if (options?.opType !== undefined) dst.op_type = options.opType;
+  if (options?.versionType !== undefined) dst.version_type = options.versionType;
+
+  const body: any = { source: src, dest: dst };
+  if (options?.conflicts !== undefined) body.conflicts = options.conflicts;
+  if (script) body.script = { source: script };
+  return body;
+}
 
 export class ElasticsearchEngine implements SearchEngine {
   private client: Client;
@@ -31,7 +49,9 @@ export class ElasticsearchEngine implements SearchEngine {
   async getClusterInfo(): Promise<ClusterInfo> {
     const info = await this.client.info();
     const version = info.version.number;
-    const distribution = info.version.distribution;
+    // `distribution` is returned at runtime by OpenSearch and some ES builds but
+    // isn't in the official client's version type — read it through a narrow cast.
+    const distribution = (info.version as { distribution?: string }).distribution;
     const engine = distribution === 'opensearch' ? 'opensearch' : 'elasticsearch';
     return {
       name: info.cluster_name,
@@ -85,19 +105,12 @@ export class ElasticsearchEngine implements SearchEngine {
     return await this.client.search({ index, ...query });
   }
 
-  async reindex(source: string, dest: string, script?: string): Promise<void> {
-    const body: any = { source: { index: source }, dest: { index: dest } };
-    if (script) {
-      body.script = { source: script };
-    }
-    await this.client.reindex(body);
+  async reindex(source: string, dest: string, script?: string, options?: ReindexOptions): Promise<void> {
+    await this.client.reindex(buildReindexBody(source, dest, script, options));
   }
 
-  async reindexAsync(source: string, dest: string, script?: string): Promise<string> {
-    const body: any = { source: { index: source }, dest: { index: dest } };
-    if (script) {
-      body.script = { source: script };
-    }
+  async reindexAsync(source: string, dest: string, script?: string, options?: ReindexOptions): Promise<string> {
+    const body = buildReindexBody(source, dest, script, options);
     const result = await this.client.reindex({ ...body, wait_for_completion: false } as any);
     return (result as any).task;
   }

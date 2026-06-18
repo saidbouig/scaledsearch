@@ -27,7 +27,7 @@ async function detectEngine(host: string, auth?: any): Promise<DetectedEngine> {
     if (res.status === 401 || res.status === 403) {
       throw new Error(`Authentication failed (${res.status}). Check your auth settings in .scaledsearch/config.yaml`);
     }
-    const info = await res.json();
+    const info = (await res.json()) as { version?: { number?: string; distribution?: string } };
     const version = parseInt(info.version?.number?.split('.')[0] || '9', 10);
     if (info.version?.distribution === 'opensearch') {
       return { type: 'opensearch', majorVersion: version };

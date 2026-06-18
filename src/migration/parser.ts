@@ -11,6 +11,19 @@ export interface MigrationOperation {
   source?: string;
   dest?: string;
   script?: string;
+  // reindex tuning — used for zero-downtime reindex with live writes.
+  //   op_type: 'create' makes the backfill skip docs already in dest, so live
+  //            writes that landed in dest first are never clobbered.
+  //   conflicts: 'proceed' keeps reindex going past the version conflicts those
+  //            skips produce (instead of aborting).
+  //   version_type: 'external'/'external_gte' lets dest reject writes whose
+  //            version is older than what's already there.
+  //   query: a source-side filter — the basis for a delta catch-up pass
+  //            (e.g. only docs updated since the bulk copy started).
+  op_type?: 'create' | 'index';
+  conflicts?: 'abort' | 'proceed';
+  version_type?: 'internal' | 'external' | 'external_gte';
+  query?: any;
   method?: string;
   path?: string;
   alias?: string;
