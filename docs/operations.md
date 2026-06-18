@@ -71,6 +71,34 @@ needed. If the CLI disconnects, the reindex keeps running on the cluster.
 Applying V003 Migrate to products_v2... 45% (4,500,000/10,000,000 docs) done (42m)
 ```
 
+### Reindex tuning (zero-downtime building blocks)
+
+For reindexing while clients are still writing, these optional fields let the copy
+defer to live writes instead of clobbering them:
+
+```yaml
+- type: reindex
+  source: products_v1
+  dest: products_v2
+  op_type: create        # only insert docs not already in dest -> live writes win
+  conflicts: proceed     # don't abort on the version conflicts those skips cause
+  version_type: external_gte  # (alternative) dest rejects writes with an older version
+  query:                 # source-side filter — basis for a delta catch-up pass
+    range:
+      updated_at: { gte: "2026-06-18T10:00:00Z" }
+```
+
+- **`op_type: create`** + **`conflicts: proceed`** — the backfill never overwrites a
+  document a live write already placed in `dest`. Use this for delta catch-up passes.
+- **`version_type: external`/`external_gte`** — `dest` keeps the higher version, so
+  older backfill data can't beat a newer live write.
+- **`query`** — restricts the source; combine with a timestamp watermark to copy only
+  the documents that changed since the bulk copy started.
+
+Omitting all of these reproduces the old behavior exactly. For the full
+zero-downtime reindex sequence (refresh tuning, delta catch-up, atomic swap) built
+from these fields, see the [zero-downtime guide](guides/zero-downtime.md).
+
 ## Alias
 
 ```yaml

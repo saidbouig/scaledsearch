@@ -23,6 +23,16 @@ export interface IndexInfo {
   closed: boolean;
 }
 
+// Tuning for the reindex API. All optional; omitted fields fall back to ES
+// defaults (op_type=index, conflicts=abort, version_type=internal, no query).
+// These enable zero-downtime reindex with live writes: see MigrationOperation.
+export interface ReindexOptions {
+  opType?: 'create' | 'index';
+  conflicts?: 'abort' | 'proceed';
+  versionType?: 'internal' | 'external' | 'external_gte';
+  query?: any;
+}
+
 export interface SearchEngine {
   connect(): Promise<void>;
   getClusterInfo(): Promise<ClusterInfo>;
@@ -38,8 +48,8 @@ export interface SearchEngine {
   createDocument(index: string, id: string, doc: any): Promise<void>;
   deleteDocument(index: string, id: string): Promise<void>;
   search(index: string, query: any): Promise<any>;
-  reindex(source: string, dest: string, script?: string): Promise<void>;
-  reindexAsync(source: string, dest: string, script?: string): Promise<string>;
+  reindex(source: string, dest: string, script?: string, options?: ReindexOptions): Promise<void>;
+  reindexAsync(source: string, dest: string, script?: string, options?: ReindexOptions): Promise<string>;
   getTask(taskId: string): Promise<{ completed: boolean; total?: number; created?: number; error?: any }>;
   closeIndex(index: string): Promise<void>;
   openIndex(index: string): Promise<void>;
