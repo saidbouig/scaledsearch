@@ -49,7 +49,9 @@ export class ElasticsearchEngine implements SearchEngine {
   async getClusterInfo(): Promise<ClusterInfo> {
     const info = await this.client.info();
     const version = info.version.number;
-    const distribution = info.version.distribution;
+    // `distribution` is returned at runtime by OpenSearch and some ES builds but
+    // isn't in the official client's version type — read it through a narrow cast.
+    const distribution = (info.version as { distribution?: string }).distribution;
     const engine = distribution === 'opensearch' ? 'opensearch' : 'elasticsearch';
     return {
       name: info.cluster_name,
