@@ -3,7 +3,7 @@
 All notable changes to ScaledSearch are documented here.
 This project follows [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.2.0] - 2026-06-18
 
 ### Added
 - `reindex` operations accept `op_type`, `conflicts`, `version_type`, and `query`,
@@ -12,6 +12,12 @@ This project follows [Keep a Changelog](https://keepachangelog.com/) and [Semant
   previous behavior. The [zero-downtime guide](docs/guides/zero-downtime.md)
   documents the full live-writes sequence, including the `_refresh`-before-swap
   step required under a high `refresh_interval`.
+  ([#20](https://github.com/saidbouig/scaledsearch/pull/20))
+
+### Fixed
+- Resolved TypeScript errors in cluster detection (`version.distribution` reads in
+  `getClusterInfo`/`detectEngine`), so `tsc --noEmit` is clean. No behavior change.
+  ([#20](https://github.com/saidbouig/scaledsearch/pull/20))
 
 ## [1.1.0] - 2026-06-12
 
