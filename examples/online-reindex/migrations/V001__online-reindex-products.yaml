@@ -1,0 +1,117 @@
+description: "Zero-downtime reindex products_v1 -> products_v2 with live writes"
+engine: elasticsearch
+target_version: ">=8.0"
+
+# ---------------------------------------------------------------------------
+# Online (delta-safe) reindex while clients keep writing through the alias.
+#
+# Use this ONLY when you genuinely need a reindex — a field TYPE change, an
+# analyzer change, a SHARD COUNT change, or a version/cluster upgrade. To just
+# ADD a field you do NOT need any of this: `put_mapping` adds it in place.
+#
+# The sequence (each step is a real operation below):
+#   1. create dest, tuned for bulk load
+#   2. note the watermark = the time you start step 3 (paste it into steps 4 & 7)
+#   3. bulk copy             (op_type:create — never clobbers a live write)
+#   4. _refresh + delta pass (catch writes that arrived during the bulk copy)
+#   5. _refresh again
+#   6. atomic alias swap
+#   7. final delta pass      (catch writes between step 4 and the swap)
+#   8. restore production settings
+#
+# Delta-safe for INSERTS and UPDATES. NOT for deletes — reindex only copies
+# documents, so a doc deleted from products_v1 during the window survives in
+# products_v2. Use soft deletes (a `deleted` flag + bumped updated_at) if you
+# delete during a migration. Every write must set `updated_at` and go through
+# the alias, never the concrete index name.
+# ---------------------------------------------------------------------------
+
+operations:
+  # 1. New index with the real reason for the reindex (here: a new shard count
+  #    and a changed mapping). Tuned for bulk load: no replicas, no refresh.
+  - type: create_index
+    index: products_v2
+    settings:
+      number_of_shards: 6        # e.g. resharding — a real reason to reindex
+      number_of_replicas: 0      # no replica writes during the bulk load
+      refresh_interval: "-1"     # don't refresh mid-bulk (large speedup)
+    mappings:
+      properties:
+        title:
+          type: text
+        price:
+          type: scaled_float
+          scaling_factor: 100
+        updated_at:
+          type: date             # the watermark field your app stamps on every write
+
+  # 2. WATERMARK: record the time you start the bulk copy below, in UTC ISO.
+  #    Paste that exact value into the `gte` of steps 4 and 7. Any write that
+  #    lands after this instant is caught by a delta pass.
+
+  # 3. Bulk copy. op_type:create means a live write already in dest is never
+  #    overwritten by the snapshot; conflicts:proceed skips those instead of
+  #    aborting. Runs async with progress; the CLI polls the task.
+  - type: reindex
+    source: products_v1
+    dest: products_v2
+    op_type: create
+    conflicts: proceed
+
+  # 4a. Force a refresh so writes buffered under refresh_interval become visible
+  #     to the delta query. WITHOUT THIS, a high refresh_interval silently hides
+  #     recent writes and the delta pass misses them.
+  - type: api_call
+    method: POST
+    path: /products_v1/_refresh
+
+  # 4b. Delta catch-up: only docs changed since the watermark. Repeat this op
+  #     (with a fresh watermark) if the window is still large; each pass shrinks.
+  - type: reindex
+    source: products_v1
+    dest: products_v2
+    op_type: create
+    conflicts: proceed
+    query:
+      range:
+        updated_at: { gte: "2026-06-18T10:00:00Z" }   # <-- the step-2 watermark
+
+  # 5. Refresh again right before the swap to flush the last buffered writes.
+  - type: api_call
+    method: POST
+    path: /products_v1/_refresh
+
+  # 6. Atomic cutover — single _aliases call, no instant where `products`
+  #    resolves to nothing.
+  - type: swap_alias
+    alias: products
+    from: products_v1
+    to: products_v2
+
+  # 7. Final delta pass AFTER the swap — catches writes that hit products_v1
+  #    between step 4b and the swap. After this, new writes go to products_v2
+  #    via the flipped alias, so no further catch-up is needed.
+  - type: reindex
+    source: products_v1
+    dest: products_v2
+    op_type: create
+    conflicts: proceed
+    query:
+      range:
+        updated_at: { gte: "2026-06-18T10:00:00Z" }   # <-- same watermark
+
+  # 8. Restore production settings now that the bulk load is done.
+  - type: put_settings
+    index: products_v2
+    settings:
+      number_of_replicas: 1
+      refresh_interval: "1s"
+
+# Rollback: re-point the alias at the old index. Both indices still exist, so
+# this is instant and lossless. Delete products_v1 in a LATER migration once
+# products_v2 is verified in production.
+rollback:
+  - type: swap_alias
+    alias: products
+    from: products_v2
+    to: products_v1
