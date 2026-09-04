@@ -3,6 +3,12 @@
 All notable changes to ScaledSearch are documented here.
 This project follows [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- `migrate create` now uses the configured engine when generating migration
+  files, including an OpenSearch-compatible default version constraint.
+
 ## [1.2.0] - 2026-06-18
 
 ### Added

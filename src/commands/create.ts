@@ -2,14 +2,31 @@ import * as fs from 'fs';
 import * as path from 'path';
 import chalk from 'chalk';
 import { stringify } from 'yaml';
-import { isInitialized, getMigrationsDir } from '../config/config';
+import { isInitialized, loadConfig, getMigrationsDir } from '../config/config';
 import { getNextVersion } from '../migration/parser';
 import { friendlyFsError } from '../util/errors';
 
-const MIGRATION_TEMPLATE = {
+const ELASTICSEARCH_MIGRATION_TEMPLATE = {
   description: '',
   engine: 'elasticsearch',
   target_version: '>=8.0',
+  operations: [
+    {
+      type: 'put_mapping',
+      index: 'your_index',
+      body: {
+        properties: {
+          example_field: { type: 'text' },
+        },
+      },
+    },
+  ],
+};
+
+const OPENSEARCH_MIGRATION_TEMPLATE = {
+  description: '',
+  engine: 'opensearch',
+  target_version: '>=3.0',
   operations: [
     {
       type: 'put_mapping',
@@ -45,7 +62,13 @@ export async function createCommand(name: string): Promise<void> {
     const fileName = `V${paddedVersion}__${slug}.yaml`;
     const filePath = path.join(migrationsDir, fileName);
 
-    const template = { ...MIGRATION_TEMPLATE, description: name };
+    const config = loadConfig(cwd);
+    const template = {
+      ...(config.engine === 'opensearch'
+        ? OPENSEARCH_MIGRATION_TEMPLATE
+        : ELASTICSEARCH_MIGRATION_TEMPLATE),
+      description: name,
+    };
     const content = stringify(template);
 
     fs.writeFileSync(filePath, content, 'utf-8');
