@@ -9,6 +9,7 @@ import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
+import { parse } from 'yaml';
 import { makeTmpDir, cleanupTmpDir } from '../helpers/tmpDir';
 
 const CLI = path.resolve(__dirname, '../../src/index.ts');
@@ -111,6 +112,31 @@ describe('create: defensively recreates migrations dir', () => {
       expect(fs.existsSync(path.join(tmp, 'migrations'))).toBe(true);
       const files = fs.readdirSync(path.join(tmp, 'migrations'));
       expect(files.some(f => f.startsWith('V001__'))).toBe(true);
+    } finally {
+      cleanupTmpDir(tmp);
+    }
+  });
+});
+
+describe('create: uses the configured engine defaults', () => {
+  it('writes OpenSearch metadata when the project is configured for OpenSearch', () => {
+    const tmp = makeTmpDir('scaledsearch-create-opensearch-');
+    try {
+      runCli(tmp, 'migrate init');
+      const configPath = path.join(tmp, '.scaledsearch', 'config.yaml');
+      const config = fs.readFileSync(configPath, 'utf-8').replace(
+        /^engine: elasticsearch$/m,
+        'engine: opensearch',
+      );
+      fs.writeFileSync(configPath, config, 'utf-8');
+
+      const result = runCli(tmp, 'migrate create "add search mapping"');
+      expect(result.status).toBe(0);
+
+      const migrationPath = path.join(tmp, 'migrations', 'V001__add-search-mapping.yaml');
+      const migration = parse(fs.readFileSync(migrationPath, 'utf-8'));
+      expect(migration.engine).toBe('opensearch');
+      expect(migration.target_version).toBe('>=3.0');
     } finally {
       cleanupTmpDir(tmp);
     }
